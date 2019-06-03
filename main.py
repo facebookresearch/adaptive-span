@@ -28,7 +28,7 @@ def get_parser():
     parser.add_argument('--nlayers', type=int, default=8,
                         help='number of layers')
     parser.add_argument('--attn-lim', type=int, default=32,
-                        help='limit attention span')
+                        help='length of the attention span')
     parser.add_argument('--block-sz', type=int, default=64,
                         help='block size (the length of sequence to process in parallel)')
     parser.add_argument('--nheads', type=int, default=2,
@@ -43,20 +43,18 @@ def get_parser():
     parser.add_argument('--batch-sz', type=int, default=64,
                         help='batch size')
     parser.add_argument('--nbatches', type=int, default=1000,
-                        help='number of batches in each epoch')
+                        help='the number of batches in each epoch')
     parser.add_argument('--nepochs', type=int, default=1000,
-                        help='number of epochs to train')
+                        help='the number of epochs to train')
     parser.add_argument('--optim', type=str, default='sgd',
                         help='optimization method: sgd | adagrad')
     parser.add_argument('--lr-warmup', type=int, default=0,
-                        help='linearly increase LR from 0 during K updates')
+                        help='linearly increase LR from 0 during first X updates')
     parser.add_argument('--grad-clip', type=float, default=0,
-                        help='[only works with adagrad!] clip gradient of each parameter by a given value')
-    parser.add_argument('--wdecay', type=float, default=0,
-                        help='weight decay')
+                        help='[Adagrad only] clip gradient of each module by a given value')
     # data related
-    parser.add_argument('--data', type=str, default='/private/home/sainbar/data/pennchar',
-                        help='data file location')
+    parser.add_argument('--data', type=str, default='',
+                        help='data location (must contain train.txt, valid.txt and test.txt)')
     # plotting
     parser.add_argument('--plot', action='store_true', default=False,
                         help='plot in visdom')
@@ -70,7 +68,7 @@ def get_parser():
     parser.add_argument('--checkpoint', type=str, default='',
                         help='path to save/load model')
     parser.add_argument('--checkpoint-freq', type=int, default=0,
-                        help='how often to keep a copy')
+                        help='keep a copy of model every K epochs (0 means keep only the last)')
     parser.add_argument('--load-only', action='store_true', default=False,
                         help='do not save to checkpoint')
     parser.add_argument('--test-mode', action='store_true', default=False,
@@ -80,7 +78,7 @@ def get_parser():
     parser.add_argument('--distributed', action='store_true', default=False,
                         help='distributed training')
     parser.add_argument('--local_rank', type=int, default=0,
-                        help='')
+                        help='used in distributed training')
     parser.add_argument('--submitit', action='store_true', default=False,
                         help='using submitit')
     parser.add_argument('--dist-init', type=str, default='',
@@ -89,6 +87,7 @@ def get_parser():
     return parser
 
 
+# TODO: remove
 class SubmititMain:
     def __call__(self, args):
         main(args)
@@ -99,11 +98,15 @@ class SubmititMain:
 
 def main(args):
     print(args)
+
+    # TODO: remove
     args = copy.deepcopy(args) # important for requeue!!! don't change original args
+
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
     if args.distributed:
         if args.submitit:
+            # TODO: remove
             job_env = submitit.JobEnvironment()
             args.local_rank = job_env.local_rank
             args.rank = job_env.global_rank
@@ -117,7 +120,6 @@ def main(args):
 
     device = torch.device("cuda" if use_cuda else "cpu")
     dtype = torch.float32
-    args.neg_inf = float(np.finfo(np.float32).min)
 
     train_data, val_data, test_data, corpus = get_data(args, device)
 
@@ -149,11 +151,11 @@ def main(args):
 
     # OPTIM param
     if args.optim == 'sgd':
-        optimizer = optim.SGD(params, lr=args.lr, weight_decay=args.wdecay, momentum=args.momentum)
+        optimizer = optim.SGD(params, lr=args.lr, momentum=args.momentum)
     elif args.optim == 'adagrad':
-        optimizer = Adagrad(params, lr=args.lr, weight_decay=args.wdecay, grad_clip=args.grad_clip)
+        optimizer = Adagrad(params, lr=args.lr, grad_clip=args.grad_clip)
     else:
-        raise RuntimeError('wrong arg')
+        raise RuntimeError('wrong optim mode!')
     if args.lr_warmup > 0:
         scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda ep: min(1, ep/args.lr_warmup))
     else:
@@ -161,34 +163,34 @@ def main(args):
 
     ep_init = checkpoint.load(args, model, optimizer, logger, scheduler)
 
-    # hid == cache init
-    # pos: 0 --> sequential /  -1 --> random
-    pos = [0 for _ in range(3)]
-    hid = [[torch.zeros(args.batch_sz, attn_span.get_cache_size(l.attn.attn), args.hid_sz).to(device, dtype=dtype) for l in model.module.layers] for _ in range(3)]
+    # current position in the data. 0=train 1=valid 2=test
+    data_pos = [0 for _ in range(3)]
+    # initialize the cache of hidden states with zeros
+    hid_cache = [[torch.zeros(args.batch_sz, attn_span.get_cache_size(l.attn.attn), args.hid_sz).to(device, dtype=dtype) for l in model.module.layers] for _ in range(3)]
 
     if args.test_mode:
         with torch.no_grad():
-            stat_val, pos[1], hid[1] = train(args, model, optimizer, scheduler, val_data,
-                test_only=True, train_pos=pos[1], h_cache=hid[1])
+            stat_val, data_pos[1], hid_cache[1] = train(args, model, optimizer, scheduler, val_data,
+                test_only=True, train_pos=data_pos[1], h_cache=hid_cache[1])
             print('val: {:.3f}bpc'.format(stat_val['loss']/math.log(2)))
 
-            stat_test, pos[2], hid[2] = train(args, model, optimizer, scheduler, test_data,
-                test_only=True, train_pos=pos[2], h_cache=hid[2])
+            stat_test, data_pos[2], hid_cache[2] = train(args, model, optimizer, scheduler, test_data,
+                test_only=True, train_pos=data_pos[2], h_cache=hid_cache[2])
             print('test: {:.3f}bpc'.format(stat_test['loss']/math.log(2)))
         return
 
     for ep in range(ep_init, args.nepochs):
         t_sta = time.time()
         args.ep = ep
-        # here the loss includes auxilary losses such as multi-position training
-        stat_train, pos[0], hid[0] = train(args, model, optimizer, scheduler, train_data,
-            train_pos=pos[0], h_cache=hid[0])
+        stat_train, data_pos[0], hid_cache[0] = train(args, model, optimizer, scheduler, train_data,
+            train_pos=data_pos[0], h_cache=hid_cache[0])
         elapsed = 1000 * (time.time() - t_sta) / args.nbatches
         with torch.no_grad():
-            stat_val, pos[1], hid[1] = train(args, model, optimizer, scheduler, val_data,
-                test_only=True, train_pos=pos[1], h_cache=hid[1])
+            stat_val, data_pos[1], hid_cache[1] = train(args, model, optimizer, scheduler, val_data,
+                test_only=True, train_pos=data_pos[1], h_cache=hid_cache[1])
 
         if args.distributed:
+            # collect results from all the workers
             X = torch.zeros(2).to(device)
             X[0] = stat_train['loss']
             X[1] = stat_val['loss']
