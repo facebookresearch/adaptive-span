@@ -1,7 +1,9 @@
+# This is copied from PyTorch
+# Sainaa: add gradient clipping
+
 import torch
 from torch.optim.optimizer import Optimizer
 
-# Sainaa: add gradient clipping
 class Adagrad(Optimizer):
     """Implements Adagrad algorithm.
 

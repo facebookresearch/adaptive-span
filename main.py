@@ -22,15 +22,15 @@ def get_parser():
     parser = argparse.ArgumentParser()
     # model related
     parser.add_argument('--hid-sz', type=int, default=256,
-                        help='hidden size')
+                        help='hidden size (i.e. model size)')
     parser.add_argument('--inner-hid-sz', type=int, default=1024,
                         help='inner hidden size of FF layer')
     parser.add_argument('--nlayers', type=int, default=8,
                         help='number of layers')
     parser.add_argument('--attn-lim', type=int, default=32,
                         help='limit attention span')
-    parser.add_argument('--mem-sz', type=int, default=64,
-                        help='memory size') # TODO: rename
+    parser.add_argument('--block-sz', type=int, default=64,
+                        help='block size (the length of sequence to process in parallel)')
     parser.add_argument('--nheads', type=int, default=2,
                         help='number of attention heads')
     parser.add_argument('--dropout', type=float, default=0.2,
