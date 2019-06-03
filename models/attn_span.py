@@ -47,7 +47,7 @@ def get_cache_size(model):
 
 # crop out unnecessary computation
 def crop(args, skip_len, key, value, key_pe):
-    cache_size = key.size(1) - args.mem_sz
+    cache_size = key.size(1) - args.block_sz
     skip_len2 = skip_len - (args.attn_lim - cache_size)
     if skip_len2 > 0:
         key = key[:, skip_len2:, :]

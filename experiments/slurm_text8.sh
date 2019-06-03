@@ -17,7 +17,7 @@ for l in 0.0000005; do
     ./submit_dist.sh $name priority "gpu:volta:8 -C volta32gb" \
     --nepochs 120 --nbatches 10000 \
     --data /private/home/sainbar/data/text8 \
-    --hid-sz 512 --inner-hid-sz 2048 --mem-sz 512 --batch-sz $bsz --nlayers 12 \
+    --hid-sz 512 --inner-hid-sz 2048 --block-sz 512 --batch-sz $bsz --nlayers 12 \
     --lr $lr --momentum $mom --dropout $do --optim adagrad --lr-warmup $wu \
     --attn-lim $lim --seq --nheads $head --grad-clip $clip \
     --attn-val-mode context --attn-span-loss $l \

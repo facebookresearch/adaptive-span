@@ -10,7 +10,7 @@ import models.attn_span as attn_span
 
 # B = batch_sz
 # H = hid_sz
-# M = mem_sz
+# M = block_sz
 # L = attn_lim
 
 
@@ -31,7 +31,7 @@ class SeqAttention(nn.Module):
         B = query.size(0)
         H = self.head_dim
         L = self.args.attn_lim
-        M = self.args.mem_sz
+        M = self.args.block_sz
         # query = B x M x H
         # key, value = B x (M+L) x H
 
@@ -87,7 +87,7 @@ class MultiHeadSeqAttention(nn.Module):
         B = query.size(0)
         K = self.args.nheads
         D = self.head_dim
-        M = self.args.mem_sz
+        M = self.args.block_sz
 
         query = self.proj_query(query)
         query = self.head_reshape(query)
@@ -162,8 +162,8 @@ class TransformerSeq(nn.Module):
         h_cache = []
         for l in range(self.args.nlayers):
             cache_size = attn_span.get_cache_size(self.layers[l].attn.attn)
-            if cache_size > self.args.mem_sz:
-                h_cache.append(torch.cat([h_prev[l][:, -cache_size+self.args.mem_sz:, :], h], dim=1).detach())
+            if cache_size > self.args.block_sz:
+                h_cache.append(torch.cat([h_prev[l][:, -cache_size+self.args.block_sz:, :], h], dim=1).detach())
             else:
                 h_cache.append(h[:, -cache_size:, :].detach())
             h = self.layers[l](h, h_prev[l], self.key_pe) # B x M x H

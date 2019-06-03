@@ -8,8 +8,8 @@ import models.attn_span as attn_span
 
 # separating batch training reduces memory usage (removes overlap?)
 def train_batch(args, model, optimizer, scheduler, data, offset, stat, test_only=False, h_cache=None):
-    X = data[:, offset:offset+args.mem_sz].contiguous()
-    Y = data[:, offset+1:offset+args.mem_sz+1].contiguous()
+    X = data[:, offset:offset+args.block_sz].contiguous()
+    Y = data[:, offset+1:offset+args.block_sz+1].contiguous()
 
     out, h_cache = model(X, h_cache, Y)
     out = out.view(-1, out.size(-1))
@@ -40,7 +40,7 @@ def train(args, model, optimizer, scheduler, data, test_only=False, train_pos=-1
         model.train()
 
     nbatches_max = args.nbatches
-    pos_shift_len = args.mem_sz
+    pos_shift_len = args.block_sz
     if test_only:
         if args.full_test:
             assert train_pos == 0
@@ -56,7 +56,7 @@ def train(args, model, optimizer, scheduler, data, test_only=False, train_pos=-1
         from tqdm import tqdm
         pbar = tqdm(total=data.size(1))
 
-    pos_max = data.size(1) -  args.mem_sz
+    pos_max = data.size(1) -  args.block_sz
     nbatches = 0
     for batch_ind in range(nbatches_max):
         if train_pos >= 0:
@@ -77,7 +77,7 @@ def train(args, model, optimizer, scheduler, data, test_only=False, train_pos=-1
                     # only test once
                     break
                 # randomize offset to reduce overfitting
-                train_pos = random.randrange(args.mem_sz)
+                train_pos = random.randrange(args.block_sz)
                 for h in h_cache:
                     h.fill_(0)
 

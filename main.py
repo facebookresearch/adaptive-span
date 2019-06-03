@@ -32,7 +32,7 @@ def get_parser():
     parser.add_argument('--block-sz', type=int, default=64,
                         help='block size (the length of sequence to process in parallel)')
     parser.add_argument('--nheads', type=int, default=2,
-                        help='number of attention heads')
+                        help='the number of attention heads')
     parser.add_argument('--dropout', type=float, default=0.2,
                         help='dropout rate of ReLU and attention')
     # optimization related
