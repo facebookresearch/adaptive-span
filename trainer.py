@@ -10,7 +10,7 @@ def train_batch(args, model, optimizer, scheduler, data, offset, stat, test_only
     X = data[:, offset:offset+args.block_sz].contiguous()
     Y = data[:, offset+1:offset+args.block_sz+1].contiguous()
 
-    out, h_cache = model(X, h_cache, Y)
+    out, h_cache = model(X, h_cache)
     out = out.view(-1, out.size(-1))
     loss = F.nll_loss(out, Y.view(-1))
     stat['loss'] = stat.get('loss', 0) + loss.item()

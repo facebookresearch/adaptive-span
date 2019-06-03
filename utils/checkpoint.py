@@ -17,7 +17,7 @@ def load_path(args, model, optimizer, logger, scheduler):
     logger.set_state(f['logger'])
     optimizer.load_state_dict(f['optimizer'])
     if 'scheduler_epoch' in f:
-        # scheduler.load_state_dict(f['scheduler'])
+        # we only need the step count
         scheduler.step(f['scheduler_epoch'])
 
     return ep_init
