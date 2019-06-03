@@ -41,7 +41,7 @@ def load(args, model, optimizer, logger, scheduler):
 
 
 def save(args, model, optimizer, logger, scheduler):
-    if args.checkpoint != '' and args.load_only == False:
+    if args.checkpoint != '':
         if os.path.exists(args.checkpoint):
             if args.checkpoint_freq > 0 and args.ep > 0 and args.ep % args.checkpoint_freq == 0:
                 try:

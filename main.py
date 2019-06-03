@@ -69,12 +69,8 @@ def get_parser():
                         help='path to save/load model')
     parser.add_argument('--checkpoint-freq', type=int, default=0,
                         help='keep a copy of model every K epochs (0 means keep only the last)')
-    parser.add_argument('--load-only', action='store_true', default=False,
-                        help='do not save to checkpoint')
-    parser.add_argument('--test-mode', action='store_true', default=False,
-                        help='only do testing')
     parser.add_argument('--full-test', action='store_true', default=False,
-                        help='do testing on whole data')
+                        help='do testing on whole validation and test data')
     parser.add_argument('--distributed', action='store_true', default=False,
                         help='distributed training')
     parser.add_argument('--local_rank', type=int, default=0,
@@ -168,7 +164,7 @@ def main(args):
     # initialize the cache of hidden states with zeros
     hid_cache = [[torch.zeros(args.batch_sz, attn_span.get_cache_size(l.attn.attn), args.hid_sz).to(device, dtype=dtype) for l in model.module.layers] for _ in range(3)]
 
-    if args.test_mode:
+    if args.full_test:
         with torch.no_grad():
             stat_val, data_pos[1], hid_cache[1] = train(args, model, optimizer, scheduler, val_data,
                 test_only=True, train_pos=data_pos[1], h_cache=hid_cache[1])

@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import models.attn_span as attn_span
 
 
-# separating batch training reduces memory usage (removes overlap?)
 def train_batch(args, model, optimizer, scheduler, data, offset, stat, test_only=False, h_cache=None):
     X = data[:, offset:offset+args.block_sz].contiguous()
     Y = data[:, offset+1:offset+args.block_sz+1].contiguous()
@@ -32,7 +31,8 @@ def train_batch(args, model, optimizer, scheduler, data, offset, stat, test_only
 
     return h_cache
 
-def train(args, model, optimizer, scheduler, data, test_only=False, train_pos=-1, h_cache=None):
+
+def train(args, model, optimizer, scheduler, data, test_only=False, train_pos=0, h_cache=None):
     stat = dict()
     if test_only:
         model.eval()
@@ -40,49 +40,32 @@ def train(args, model, optimizer, scheduler, data, test_only=False, train_pos=-1
         model.train()
 
     nbatches_max = args.nbatches
-    pos_shift_len = args.block_sz
     if test_only:
         if args.full_test:
-            assert train_pos == 0
-            nbatches_max = data.size(1)
-            for h in h_cache:
-                h.fill_(0)
+            # test on whole data
+            nbatches_max = math.ceil(data.size(1) / args.block_sz)
         else:
-            # reduce test batches for speed-up
+            # test on fewer batches for speed-up
             nbatches_max = max(1, args.nbatches // 10)
-            nbatches_max = min(nbatches_max, math.ceil(data.size(1) / pos_shift_len))
+            nbatches_max = min(nbatches_max, math.ceil(data.size(1) / args.block_sz))
 
-    if args.test_mode:
-        from tqdm import tqdm
-        pbar = tqdm(total=data.size(1))
-
-    pos_max = data.size(1) -  args.block_sz
     nbatches = 0
     for batch_ind in range(nbatches_max):
-        if train_pos >= 0:
-            offset = train_pos
-        else:
-            offset = random.randrange(pos_max)
-        if args.test_mode:
-            pbar.update(pos_shift_len)
-
         nbatches += 1
-        h_cache = train_batch(args, model, optimizer, scheduler, data, offset, stat, test_only, h_cache)
+        h_cache = train_batch(args, model, optimizer, scheduler, data, train_pos, stat, test_only, h_cache)
 
-        if train_pos >= 0:
-            train_pos += pos_shift_len
-            if train_pos >= pos_max:
-                if args.full_test:
-                    train_pos = 0
-                    # only test once
-                    break
-                # randomize offset to reduce overfitting
-                train_pos = random.randrange(args.block_sz)
-                for h in h_cache:
-                    h.fill_(0)
+        train_pos += args.block_sz
+        if train_pos >= data.size(1) - args.block_sz:
+            # data position reached the end
+            if args.full_test:
+                # only test once
+                break
+            # randomize offset to reduce overfitting
+            train_pos = random.randrange(args.block_sz)
+            # reset the cache
+            for h in h_cache:
+                h.fill_(0)
 
-    if args.test_mode:
-        pbar.close()
     for k, v in stat.items():
         stat[k] = v / nbatches
     return stat, train_pos, h_cache
