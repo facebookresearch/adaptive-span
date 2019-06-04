@@ -1,9 +1,23 @@
+#!/usr/bin/env python3
+
 import os
 import argparse
 import uuid
 from pathlib import Path
 import submitit
-from main import get_parser, SubmititMain
+from main import parse_args
+
+
+# TODO: clean-up args
+
+
+class SubmitMyFunc:
+    def __call__(self, myfunc, args):
+        myfunc(args)
+
+    def checkpoint(self, args):
+        return submitit.helpers.DelayedSubmission(self, args)
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', type=str, default='', help='')
@@ -18,10 +32,9 @@ args = parser.parse_args()
 job_args = args.args.split()
 folder = Path(args.folder)
 os.makedirs(str(folder), exist_ok=True)
-init_file = folder / f"{uuid.uuid4().hex}_init" #not used when nodes=1
+init_file = folder / f"{uuid.uuid4().hex}_init"  # not used when nodes=1
 job_args += ['--submitit', '--dist-init', init_file.as_uri()]
-job_parser = get_parser()
-job_args = job_parser.parse_args(job_args)
+job_args = parse_args(job_args)
 
 executor = submitit.AutoExecutor(folder=folder / "%j", max_num_timeout=10)
 executor.update_parameters(
@@ -38,10 +51,9 @@ executor.update_parameters(
 )
 if args.partition == 'priority':
     executor.update_parameters(
-        comment='NIPS deadline May 23rd'
-    )
+        comment='NIPS deadline May 23rd')
 
 executor.update_parameters(name=args.name)
-main = SubmititMain()
-job = executor.submit(main, job_args)
+submitted_func = SubmitMyFunc(myfunc)
+job = executor.submit(submitted_func, job_args)
 print('submited {} {}'.format(job.job_id, args.name))

@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+
 from __future__ import print_function
-from argparse import Namespace
 import math
-import random
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from models.utils import *
 import models.attn_span as attn_span
 
@@ -13,12 +15,12 @@ import models.attn_span as attn_span
 # M = mem_sz
 # L = attn_lim
 
-
-# each position will only attent to its previous L positions (from the lower layer)
+# each position will only attent to its previous L positions
+# (from the lower layer)
 # no self-attention: L positions doesn't include the current step
 
-class SeqAttention(nn.Module):
 
+class SeqAttention(nn.Module):
     def __init__(self, args):
         super(SeqAttention, self).__init__()
         self.args = args

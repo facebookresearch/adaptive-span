@@ -28,5 +28,5 @@ git diff >> $base_dir/git.txt
 
 cd $base_dir/code
 host=$(hostname)
-python submit.py --name $name --folder $base_dir --partition $partition --ngpu $ngpus --constraint $constraint --nodes $nodes \
+./submit.py --name $name --folder $base_dir --partition $partition --ngpu $ngpus --constraint $constraint --nodes $nodes \
   --args "$args --checkpoint $base_dir/model.pt --distributed --plot --plot-host http://${host} --plot-env $name"

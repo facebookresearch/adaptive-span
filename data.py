@@ -1,73 +1,77 @@
+#!/usr/bin/env python3
+
 import os
 import torch
 
 
-def batchify(data, bsz):
-    # Work out how cleanly we can divide the dataset into bsz parts.
-    nbatch = data.size(0) // bsz
-    # Trim off any extra elements that wouldn't cleanly fit (remainders).
-    data = data.narrow(0, 0, nbatch * bsz)
-    # Evenly divide the data across the bsz batches.
-    data = data.view(bsz, -1).contiguous()
-    return data
+def tokenize(text_path, dictionary_to_update):
+    """Tokenizes a text file."""
+    assert os.path.exists(text_path)
+
+    nb_tokens_in_dictionary = len(dictionary_to_update)
+    nb_tokens_in_text = 0
+
+    # Count nb of tokens in text and update the dictionary
+    with open(text_path, 'r', encoding="utf8") as f:
+        for line in f:
+            tokens = line.split() + ['<eos>']
+            nb_tokens_in_text += len(tokens)
+            for token in tokens:
+                if token not in dictionary_to_update:
+                    dictionary_to_update[token] = nb_tokens_in_dictionary
+                    nb_tokens_in_dictionary += 1
+
+    # Create tensor of size nb_tokens_in_text
+    ids = torch.LongTensor(nb_tokens_in_text)
+    # Assign to each token its identifier
+    current_token_no = 0
+    with open(text_path, 'r', encoding="utf8") as f:
+        for line in f:
+            tokens = line.split() + ['<eos>']
+            for token in tokens:
+                ids[current_token_no] = dictionary_to_update[token]
+                current_token_no += 1
+
+    return ids
 
 
-class Dictionary(object):
-    def __init__(self):
-        self.word2idx = {}
-        self.idx2word = []
-
-    def add_word(self, word):
-        if word not in self.word2idx:
-            self.idx2word.append(word)
-            self.word2idx[word] = len(self.idx2word) - 1
-        return self.word2idx[word]
+class Corpus:
+    def __init__(self, data_path):
+        self._dictionary = {}
+        self.train = tokenize(
+            text_path=os.path.join(data_path, 'train.txt'),
+            dictionary_to_update=self._dictionary)
+        self.valid = tokenize(
+            text_path=os.path.join(data_path, 'valid.txt'),
+            dictionary_to_update=self._dictionary)
+        self.test = tokenize(
+            text_path=os.path.join(data_path, 'test.txt'),
+            dictionary_to_update=self._dictionary)
 
     def __len__(self):
-        return len(self.idx2word)
+        return len(self._dictionary)
 
 
-class Corpus(object):
-    def __init__(self, path):
-        self.dictionary = Dictionary()
-        self.train = self.tokenize(os.path.join(path, 'train.txt'))
-        self.valid = self.tokenize(os.path.join(path, 'valid.txt'))
-        self.test = self.tokenize(os.path.join(path, 'test.txt'))
-
-    def tokenize(self, path):
-        """Tokenizes a text file."""
-        assert os.path.exists(path)
-        # Add words to the dictionary
-        with open(path, 'r', encoding="utf8") as f:
-            tokens = 0
-            for line in f:
-                words = line.split() + ['<eos>']
-                tokens += len(words)
-                for word in words:
-                    self.dictionary.add_word(word)
-
-        # Tokenize file content
-        with open(path, 'r', encoding="utf8") as f:
-            ids = torch.LongTensor(tokens)
-            token = 0
-            for line in f:
-                words = line.split() + ['<eos>']
-                for word in words:
-                    ids[token] = self.dictionary.word2idx[word]
-                    token += 1
-
-        return ids
+def batchify(data_tensor, batch_size):
+    # Work out how cleanly we can divide the dataset into batch_size parts.
+    nb_batches = data_tensor.size(0) // batch_size
+    # Trim off any extra elements that wouldn't cleanly fit (remainders).
+    data_tensor = data_tensor.narrow(0, 0, nb_batches * batch_size)
+    # Evenly divide the data across the batch_size batches.
+    data_tensor = data_tensor.view(batch_size, -1).contiguous()
+    return data_tensor
 
 
-def get_data(args, device):
-    corpus_path = os.path.join(args.data, 'corpus.pt')
+def get_data(data_path, batch_size, device):
+    corpus_path = os.path.join(data_path, 'corpus.pt')
     if os.path.exists(corpus_path):
         corpus = torch.load(corpus_path)
     else:
-        corpus = Corpus(args.data)
+        corpus = Corpus(data_path)
         torch.save(corpus, corpus_path)
-    args.vocab_sz = len(corpus.dictionary)
-    train_data = batchify(corpus.train, args.batch_sz).to(device)
-    val_data = batchify(corpus.valid, args.batch_sz).to(device)
-    test_data = batchify(corpus.test, args.batch_sz).to(device)
-    return train_data, val_data, test_data, corpus
+    args.vocab_sz = len(corpus)
+    return {
+        'train_data': batchify(corpus.train, batch_size).to(device),
+        'val_data': batchify(corpus.valid, batch_size).to(device),
+        'test_data': batchify(corpus.test, batch_size).to(device)
+    }

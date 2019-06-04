@@ -1,14 +1,18 @@
+#!/usr/bin/env python3
+
 import math
 import visdom
 import numpy as np
 import torch
 
-class Logger(object):
-    def __init__(self, args):
-        self.args = args
-        if args.plot:
-            self.vis = visdom.Visdom(env=args.plot_env,
-                server=args.plot_host)
+
+class Plotter:
+    def __init__(self, plot, plot_env, plot_host):
+        self.plot = plot
+        self.plot_env = plot_env
+        if plot:
+            self.vis = visdom.Visdom(
+                env=plot_env, server=plot_host)
         self.plots = dict()
 
     def set_state(self, state):
@@ -30,7 +34,6 @@ class Logger(object):
             self.plots[title]['data'][subtitle].append(value)
         if opts is not None:
             self.plots[title]['opts'] = opts
-
 
     def hist(self, title, data, sub_ind=None):
         if sub_ind is None:
@@ -59,9 +62,17 @@ class Logger(object):
                         legend.append(st)
                     data = np.transpose(np.array(data))
                     opts['legend'] = legend
-                    self.vis.line(Y=data, X=self.plots['X']['data'], win=title, opts=opts)
+                    self.vis.line(
+                        Y=data,
+                        X=self.plots['X']['data'],
+                        win=title,
+                        opts=opts)
                 else:
-                    self.vis.line(Y=v['data'], X=self.plots['X']['data'], win=title, opts=opts)
+                    self.vis.line(
+                        Y=v['data'],
+                        X=self.plots['X']['data'],
+                        win=title,
+                        opts=opts)
             elif v['type'] == 'image':
                 opts.update({'width': 200, 'height': 200})
                 self.vis.image(v['data'], win=title, opts=opts)
@@ -72,17 +83,17 @@ class Logger(object):
                     self.vis.histogram(data, win=title, opts=opts)
                 else:
                     self.vis.histogram(v['data'], win=title, opts=opts)
-        self.vis.save([self.args.plot_env])
+        self.vis.save([self.plot_env])
 
-    def step(self, args, stat_train, stat_val, elapsed):
+    def step(self, ep, nb_batches, stat_train, stat_val, elapsed):
         print('{}\ttrain: {:.2f}bpc\tval: {:.2f}bpc\tms/batch: {:.1f}'.format(
-            (args.ep+1)*args.nbatches,
-            stat_train['loss']/math.log(2),
-            stat_val['loss']/math.log(2),
+            (ep + 1) * nb_batches,
+            stat_train['loss'] / math.log(2),
+            stat_val['loss'] / math.log(2),
             elapsed))
-        self.log('train_mp_bpc', stat_train['loss']/math.log(2))
-        self.log('val_bpc', stat_val['loss']/math.log(2))
-        self.log('X', (args.ep+1)*args.nbatches)
+        self.log('train_mp_bpc', stat_train['loss'] / math.log(2))
+        self.log('val_bpc', stat_val['loss'] / math.log(2))
+        self.log('X', (ep + 1) * nb_batches)
 
-        if args.plot:
+        if self.plot:
             self.update_plot()

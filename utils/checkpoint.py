@@ -1,20 +1,27 @@
+#!/usr/bin/env python3
+
 import os
 import shutil
+
 import torch
-import torch.nn as nn
 
 
-def load_path(args, model, optimizer, logger, scheduler):
-    path = args.checkpoint
-    print('loading from ' + path)
-    if args.distributed:
+def _load_checkpoint(checkpoint_path,
+                     model,
+                     optimizer,
+                     plotter,
+                     scheduler,
+                     distributed) -> int:
+    print('loading from ' + checkpoint_path)
+    if distributed:
         # the model is saved from gpu0 so we need to map it to CPU first
-        f = torch.load(path, map_location=lambda storage, loc: storage)
+        f = torch.load(checkpoint_path,
+                       map_location=lambda storage, loc: storage)
     else:
-        f = torch.load(path)
+        f = torch.load(checkpoint_path)
     ep_init = f['epoch']
     model.load_state_dict(f['model'])
-    logger.set_state(f['logger'])
+    plotter.set_state(f['plotter'])
     optimizer.load_state_dict(f['optimizer'])
     if 'scheduler_epoch' in f:
         # scheduler.load_state_dict(f['scheduler'])
@@ -23,38 +30,55 @@ def load_path(args, model, optimizer, logger, scheduler):
     return ep_init
 
 
-def load(args, model, optimizer, logger, scheduler):
-    ep_init = 0
-    if args.checkpoint != '' and os.path.exists(args.checkpoint):
+def load_checkpoint(checkpoint_path,
+                    model,
+                    optimizer,
+                    plotter,
+                    scheduler,
+                    distributed) -> int:
+    if checkpoint_path and os.path.exists(checkpoint_path):
         try:
-            ep_init = load_path(args, model, optimizer, logger, scheduler)
+            return _load_checkpoint(checkpoint_path, model, optimizer,
+                                    plotter, scheduler, distributed)
+        # TODO: BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
         except:
             print('load failed')
             # try the backup checkpoint
-            if os.path.exists(args.checkpoint + '.bak'):
+            if os.path.exists(checkpoint_path + '.bak'):
                 try:
-                    ep_init = load_path(args + '.bak', model, optimizer, logger, scheduler)
+                    return _load_checkpoint(checkpoint_path + '.bak', model,
+                                            optimizer, plotter, scheduler,
+                                            distributed)
+                #  TODO; BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
                 except:
                     print('load failed')
 
-    return ep_init
+    return 0
 
 
-def save(args, model, optimizer, logger, scheduler):
-    if args.checkpoint != '' and args.load_only == False:
-        if os.path.exists(args.checkpoint):
-            if args.checkpoint_freq > 0 and args.ep > 0 and args.ep % args.checkpoint_freq == 0:
+def save_checkpoint(checkpoint_path,
+                    checkpoint_freq,
+                    ep,
+                    model,
+                    optimizer,
+                    plotter,
+                    scheduler):
+    if checkpoint_path and not args.load_only:
+        if os.path.exists(checkpoint_path):
+            if checkpoint_freq > 0 and ep > 0 and ep % checkpoint_freq == 0:
                 try:
-                    shutil.copyfile(args.checkpoint, args.checkpoint + '.' + str(args.ep))
+                    shutil.copyfile(
+                        checkpoint_path, checkpoint_path + '.' + str(ep))
+                #  TODO; BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
                 except:
                     print('save copy failed')
             # make a backup in case this save fails
-            os.replace(args.checkpoint, args.checkpoint + '.bak')
+            os.replace(checkpoint_path, checkpoint_path + '.bak')
         f = dict()
-        f['epoch'] = args.ep + 1
+        f['epoch'] = ep + 1
         f['model'] = model.state_dict()
-        f['logger'] = logger.get_state()
+        f['plotter'] = plotter.get_state()
         f['optimizer'] = optimizer.state_dict()
         if scheduler is not None:
             f['scheduler_epoch'] = scheduler.last_epoch
-        torch.save(f, args.checkpoint)
+        torch.save(f, checkpoint_path)
