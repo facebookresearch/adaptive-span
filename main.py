@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
-from __future__ import print_function
 import time
 import math
-import argparse
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
 
 from data import get_data
 from models.transformer_seq import TransformerSeq
@@ -18,88 +16,61 @@ from trainer import train
 from utils.plotter import Plotter
 from utils.checkpoint import load_checkpoint, save_checkpoint
 from utils.adagrad import Adagrad
+from utils.params import get_params
+from utils import helpers
 
-# TODO: remove
-import submitit
-
-
-
-def launch(model_params, optim_params, data_params, plot_params, compute_params, checkpoint_params, test_params, *, **other_params):
+from config import PARAMS_CONFIG
 
 
+def launch(model_params,
+           optim_params,
+           data_params,
+           plot_params,
+           compute_params,
+           checkpoint_params,
+           test_params,
+           attn_params,
+           *args,
+           **kwargs):
+    # def launch(hid_sz: int,
+    #            inner_hid_sz: int,
+    #            nlayers: int,
+    #            attn_lim: int,
+    #            block_sz: int,
+    #            nheads: int,
+    #            dropout: float,
+    #            lr: float,
+    #            momentum: float,
+    #            batch_sz: int,
+    #            nbatches: int,
+    #            nepochs: int,
+    #            optim: str,
+    #            lr_warmup: int,
+    #            grad_clip: float,
+    #            wdecay: float,
+    #            data: str,
+    #            plot: bool,
+    #            plot_env: str,
+    #            plot_host: str,
+    #            no_cuda: bool,
+    #            checkpoint: str,
+    #            checkpoint_freq: int,
+    #            load_only: bool,
+    #            test_mode: bool,
+    #            full_test: bool,
+    #            distributed: bool,
+    #            local_rank: int,
+    #            submitit: bool,
+    #            dist_init: str):
 
-
-def launch(hid_sz: int,
-           inner_hid_sz: int,
-           nlayers: int,
-           attn_lim: int,
-           block_sz: int,
-           nheads: int,
-           dropout: float,
-           lr: float,
-           momentum: float,
-           batch_sz: int,
-           nbatches: int,
-           nepochs: int,
-           optim: str,
-           lr_warmup: int,
-           grad_clip: float,
-           wdecay: float,
-           data: str,
-           plot: bool,
-           plot_env: str,
-           plot_host: str,
-           no_cuda: bool,
-           checkpoint: str,
-           checkpoint_freq: int,
-           load_only: bool,
-           test_mode: bool,
-           full_test: bool,
-           distributed: bool,
-           local_rank: int,
-           submitit: bool,
-           dist_init: str):
-    use_cuda = not no_cuda and torch.cuda.is_available()
-
-    # TODO: SHOULD BE IN submit_fair !!!
-    if distributed:
-        if submitit:
-            job_env = submitit.JobEnvironment()
-            local_rank = job_env.local_rank
-            rank = job_env.global_rank
-            world_size = job_env.num_tasks
-            torch.distributed.init_process_group(
-                backend='nccl',
-                init_method=dist_init,
-                rank=job_env.global_rank,
-                world_size=job_env.num_tasks
-            )
-        else:
-            torch.distributed.init_process_group(
-                backend='nccl',
-                init_method='env://'
-            )
-            rank = torch.distributed.get_rank()
-            world_size = torch.distributed.get_world_size()
-        torch.cuda.set_device(local_rank)
-
-    device = torch.device("cuda" if use_cuda else "cpu")
-    dtype = torch.float32
-    neg_inf = float(np.finfo(np.float32).min)
+    helpers.torch_distributed_init_process_group(**compute_params)
+    device = helpers.get_device(cuda_enabled=not compute_params['no_cuda'])
 
     train_data, val_data, test_data = get_data(
-        data_path=data,
-        batch_size=batch_sz,
-        device=device)
-
-    if distributed:
-        batch_sz = batch_sz // world_size
-        slice_data = slice(
-            batch_sz * rank,
-            batch_sz * (rank + 1))
-        train_data = train_data[slice_data]
-        val_data = val_data[slice_data]
-        test_data = test_data[slice_data]
+        data_path=data_params.data_path,
+        batch_size=optim_params.batch_size,
+        device=device,
+        distributed=compute_params.distributed)
 
     plotter = Plotter(plot='plot', plot_env='plot_env', plot_host='plot_host')
 
@@ -107,12 +78,12 @@ def launch(hid_sz: int,
     model = TransformerSeq(args)
 
     if distributed:
-        model = model.to(device, dtype=dtype)
+        model = model.to(device, dtype=torch.float32)
         model = nn.parallel.DistributedDataParallel(
             model, device_ids=[local_rank], output_device=local_rank)
     else:
         model = nn.DataParallel(model)
-        model = model.to(device, dtype=dtype)
+        model = model.to(device, dtype=torch.float32)
 
     nparameters = 0
     params = []
@@ -153,7 +124,7 @@ def launch(hid_sz: int,
             torch.zeros(
                 batch_sz,
                 attn_span.get_cache_size(l.attn.attn),
-                hid_sz).to(device, dtype=dtype)
+                hid_sz).to(device, dtype=torch.float32)
             for l in model.module.layers
         ]
         for _ in range(3)
@@ -206,5 +177,9 @@ def launch(hid_sz: int,
             ep, model, optimizer, plotter, scheduler)
 
 
+def launch_from_cli():
+    pass
+
+
 if __name__ == '__main__':
-    launch(**get_params())
+    launch(**get_params(params_config=PARAMS_CONFIG, args=None))

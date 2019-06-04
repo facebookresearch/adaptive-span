@@ -25,7 +25,7 @@ SUBMIT_PARAMS_CONFIG = {
             'type': int,
             'default': 8,
             'help': '',
-            'dest': 'ngpus'
+            'dest': 'nb_gpus'
         },
         '--nodes': {
             'type': int,
@@ -47,3 +47,8 @@ SUBMIT_PARAMS_CONFIG = {
         },
     }
 }
+
+EXECUTOR_MEM_GB = 128
+EXECUTOR_CPUS_PER_TASK = 2
+EXECUTOR_TIMEOUT_MIN = 4320
+EXECUTOR_SIGNAL_DELAY_S = 120

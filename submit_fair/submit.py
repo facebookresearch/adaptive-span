@@ -4,56 +4,56 @@ import os
 import argparse
 import uuid
 from pathlib import Path
+
 import submitit
-from main import parse_args
 
-
-# TODO: clean-up args
+# TODO: review import statements
+from submit_params_config import *
+from utils.params import get_params
+from main import launch_from_cli
+from params_config import PARAMS_CONFIG
 
 
 class SubmitMyFunc:
-    def __call__(self, myfunc, args):
-        myfunc(args)
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, args):
+        self.call(args)
 
     def checkpoint(self, args):
         return submitit.helpers.DelayedSubmission(self, args)
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--name', type=str, default='', help='')
-parser.add_argument('--folder', type=str, default='', help='')
-parser.add_argument('--partition', type=str, default='learnfair', help='')
-parser.add_argument('--ngpus', type=int, default=8, help='')
-parser.add_argument('--nodes', type=int, default=1, help='')
-parser.add_argument('--constraint', type=str, default='volta32gb', help='')
-parser.add_argument('--args', type=str, default='', help='')
-args = parser.parse_args()
-
-job_args = args.args.split()
-folder = Path(args.folder)
+submit_params = get_params(params_config=SUBMIT_PARAMS_CONFIG, args=None)
+folder = Path(submit_params['folder'])
 os.makedirs(str(folder), exist_ok=True)
 init_file = folder / f"{uuid.uuid4().hex}_init"  # not used when nodes=1
-job_args += ['--submitit', '--dist-init', init_file.as_uri()]
-job_args = parse_args(job_args)
+
+
+job_args = submit_params['args'].split() + [
+    '--submitit', '--dist-init', init_file.as_uri()]
+job_params = get_params(params_config=PARAMS_CONFIG, args=job_args)
+
 
 executor = submitit.AutoExecutor(folder=folder / "%j", max_num_timeout=10)
 executor.update_parameters(
-    mem_gb=128,
-    gpus_per_node=args.ngpus,
-    tasks_per_node=args.ngpus,  # one task per GPU
-    cpus_per_task=2,
-    nodes=args.nodes,
-    timeout_min=4320,
+    mem_gb=EXECUTOR_MEM_GB,
+    gpus_per_node=submit_params['nb_gpus'],
+    tasks_per_node=submit_params['nb_gpus'],  # one task per GPU
+    cpus_per_task=EXECUTOR_CPUS_PER_TASK,
+    nodes=submit_params['nodes'],
+    timeout_min=EXECUTOR_TIMEOUT_MIN,
     # Below are cluster dependent parameters
-    partition=args.partition,
-    signal_delay_s=120,
-    constraint=args.constraint,
+    partition=submit_params['partition'],
+    signal_delay_s=EXECUTOR_SIGNAL_DELAY_S,
+    constraint=submit_params['constraint'],
 )
-if args.partition == 'priority':
+if submit_params['partition'] == 'priority':
     executor.update_parameters(
         comment='NIPS deadline May 23rd')
 
-executor.update_parameters(name=args.name)
-submitted_func = SubmitMyFunc(myfunc)
-job = executor.submit(submitted_func, job_args)
-print('submited {} {}'.format(job.job_id, args.name))
+executor.update_parameters(name=submit_params['name'])
+submitted_func = SubmitMyFunc(launch)
+job = executor.submit(submitted_func, job_params)
+print('submited {} {}'.format(job.job_id, submit_params['name']))

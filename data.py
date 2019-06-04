@@ -62,16 +62,35 @@ def batchify(data_tensor, batch_size):
     return data_tensor
 
 
-def get_data(data_path, batch_size, device):
+def get_data(data_path,
+             batch_size,
+             world_size,
+             device,
+             distributed: bool):
     corpus_path = os.path.join(data_path, 'corpus.pt')
     if os.path.exists(corpus_path):
         corpus = torch.load(corpus_path)
     else:
         corpus = Corpus(data_path)
         torch.save(corpus, corpus_path)
+    # TODO: see where vocab_sz is used
     args.vocab_sz = len(corpus)
-    return {
+    data = {
         'train_data': batchify(corpus.train, batch_size).to(device),
         'val_data': batchify(corpus.valid, batch_size).to(device),
         'test_data': batchify(corpus.test, batch_size).to(device)
+    }
+    if distributed:
+        rank = torch.distributed.get_rank()
+        torch.distributed.get_world_size()
+        batch_sz = batch_size // world_size
+        slice_data = slice(
+            batch_sz * rank,
+            batch_sz * (rank + 1))
+    else:
+        slice_data = slice(None)
+    return {
+        'train_data': batchify(corpus.train, batch_size).to(device)[slice_data],
+        'val_data': batchify(corpus.valid, batch_size).to(device)[slice_data],
+        'test_data': batchify(corpus.test, batch_size).to(device)[slice_data]
     }

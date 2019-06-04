@@ -15,6 +15,7 @@ def _parse_args(params_config, args):
 def get_params(params_config, args=None):
     namespace = _parse_args(params_config, args)
 
+    # TODO: should return dataclasses instead of dict
     return {
         params_category: {
             param_config['dest']:

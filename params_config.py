@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 PARAMS_CONFIG = {
     # model-specific
     'model_params': {
@@ -152,46 +151,82 @@ PARAMS_CONFIG = {
             'help': 'distributed training',
             'dest': 'distributed'
         },
-    }
+        # TODO: mnove to the submit_fair folder
+        '--submitit': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'using submitit',
+            'dest': 'submitit_enabled'
+        },
+        '--dist-init': {
+            'type': str,
+            'default': '',
+            'help': 'distributed training',
+            'dest': 'dist_init'
+        },
+        # TODO: what is the goal of this?
+        '--local-rank': {
+            'type': int,
+            'default': 0,
+            'help': '',
+            'dest': 'local_rank'
+        },
+    },
+    # checkpoint-specific
+    'checkpoint_params': {
+        '--checkpoint': {
+            'type': str,
+            'default': '',
+            'help': 'path to save/load model',
+            'dest': 'checkpoint_path'
+        },
+        '--checkpoint-freq': {
+            'type': int,
+            'default': 0,
+            # TODO: what is the unit?
+            'help': 'how often to keep a copy',
+            'dest': 'checkpoint_freq'
+        },
+        '--load-only': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'do not save to checkpoint',
+            'dest': 'load_only'
+        },
+    },
+    # TODO: move to the attn span folder
+    # attention-span-specific
+    'attn_params': {
+        '--attn-span': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'learn attention span',
+            'dest': 'attn_span_enabled'
+        },
+        '--attn-span-loss': {
+            'type': float,
+            'default': 0,
+            'help': 'learn attention span',
+            'dest': 'attn_span_loss'
+        },
+        '--attn-span-len': {
+            # TODO: shouldn't it be an int?
+            'type': float,
+            'default': 32,
+            'help': 'learn attention span',
+            'dest': 'attn_span_len'
+        },
+        '--attn-span-init': {
+            'type': float,
+            'default': 0,
+            'help': 'initial attention span ratio value',
+            'dest': 'attn_span_init'
+        },
+        '--attn-span-cache': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'change cache size',
+            'dest': 'attn_span_cache_enabled'
+        },
+    },
 }
-
-
-    # computation related
-    parser.add_argument('--no-cuda', action='store_true', default=False,
-                        help='disables CUDA training')
-    parser.add_argument('--distributed', action='store_true', default=False,
-                        help='distributed training')
-    parser.add_argument('--local-rank', type=int, default=0,
-                        help='')
-    parser.add_argument('--submitit', action='store_true', default=False,
-                        help='using submitit')
-    parser.add_argument('--dist-init', type=str, default='',
-                        help='distributed training')
-    # checkpoint related
-    parser.add_argument('--checkpoint', type=str, default='',
-                        help='path to save/load model')
-    parser.add_argument('--checkpoint-freq', type=int, default=0,
-                        help='how often to keep a copy')
-    parser.add_argument('--load-only', action='store_true', default=False,
-                        help='do not save to checkpoint')
-    # test related
-    parser.add_argument('--test-mode', action='store_true', default=False,
-                        help='only do testing')
-    parser.add_argument('--full-test', action='store_true', default=False,
-                        help='do testing on whole data')
-    # attention model related
-    parser.add_argument('--attn-span', action='store_true', default=False,
-                        help='learn attention span',
-                        dest='attn_span')
-    parser.add_argument('--attn-span-loss', type=float, default=0,
-                        help='learn attention span',
-                        dest='attn_span_loss')
-    parser.add_argument('--attn-span-len', type=float, default=32,
-                        help='learn attention span',
-                        dest='attn_span_len')
-    parser.add_argument('--attn-span-init', type=float, default=0,
-                        help='initial attention span ratio value',
-                        dest='attn_span_init')
-    parser.add_argument('--attn-span-cache', action='store_true', default=False,
-                        help='change cache size',
-                        dest='attn_span_cache')
