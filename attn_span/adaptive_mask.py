@@ -34,7 +34,7 @@ class AdaptiveMask(nn.Module):
         return x
 
     def get_max_size(self):
-        max_size = self.size_ratio.max().item()
-        max_size = self.ramp_size + max_size * self.size
-        max_size = max(0, min(self.size, math.ceil(max_size)))
-        return max_size
+        max_size = math.ceil(
+            self.ramp_size + self.size_ratio.max().item() * self.size)
+        max_size = min(self.size, max_size)
+        return max_size if max_size > 0 else 0

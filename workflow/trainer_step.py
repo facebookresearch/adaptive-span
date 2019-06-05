@@ -6,7 +6,7 @@ import time
 import torch
 
 # TODO: review import statements
-from utils.checkpoint import load_checkpoint, save_checkpoint
+from utils.checkpoint import load_checkpoint, save_checkpoint, is_checkpoint
 from models import attn_span
 
 
@@ -32,7 +32,8 @@ def _train_batch(model,
 
     if not test_only:
         if attn_span_loss > 0:
-            loss = loss + attn_span.loss(model, attn_span_loss, attn_lim)
+            loss += sum(l.attn.attn.compute_extra_loss()
+                        for l in model.module.layers)
 
         if scheduler is not None:
             scheduler.step()
@@ -42,7 +43,8 @@ def _train_batch(model,
         optimizer.step()
 
         if attn_span_loss > 0:
-            attn_span.param_clamp(model)
+            for l in model.module.layers:
+                l.attn.attn.clamp_param()
 
     return h_cache
 
@@ -161,7 +163,7 @@ def _train(device,
         [
             torch.zeros(
                 batch_size,
-                attn_span.get_cache_size(l.attn.attn),
+                l.attn.attn.get_cache_size(),
                 hidden_size).to(device, dtype=torch.float32)
             for l in model.module.layers
         ]
@@ -171,7 +173,7 @@ def _train(device,
     if full_test:
         with torch.no_grad():
             stat_val, pos[1], hid[1] = _train_single_iteration(
-                args, model=model,
+                model=model,
                 optimizer=optimizer, scheduler=scheduler, data=val_data,
                 attn_lim=attn_lim, attn_span_loss=attn_span_loss,
                 test_only=True, train_pos=pos[1], h_cache=hid[1])
@@ -179,7 +181,7 @@ def _train(device,
             print('val: {:.3f}bpc'.format(stat_val['loss'] / math.log(2)))
 
             stat_test, pos[2], hid[2] = _train_single_iteration(
-                args, model=model,
+                model=model,
                 optimizer=optimizer, scheduler=scheduler, data=test_data,
                 test_only=True, train_pos=pos[2], h_cache=hid[2])
             # TODO: replace print by logger
@@ -191,14 +193,14 @@ def _train(device,
         # here the loss includes auxilary losses such as multi-position
         # training
         stat_train, pos[0], hid[0] = _train_single_iteration(
-            args, model=model,
+            model=model,
             optimizer=optimizer, scheduler=scheduler, data=train_data,
             attn_lim=attn_lim, attn_span_loss=attn_span_loss,
             train_pos=pos[0], h_cache=hid[0])
         elapsed = 1000 * (time.time() - t_sta) / nbatches
         with torch.no_grad():
             stat_val, pos[1], hid[1] = _train_single_iteration(
-                args, model=model,
+                model=model,
                 optimizer=optimizer, scheduler=scheduler, data=val_data,
                 attn_lim=attn_lim, attn_span_loss=attn_span_loss,
                 test_only=True, train_pos=pos[1], h_cache=hid[1])
@@ -226,17 +228,17 @@ def _train(device,
                      stat_val=stat_val,
                      elapsed=elapsed)
 
-        # TODO: sqve_checkpoint should only save
-        # load_only and freq should be tested in an outer condition
-        save_checkpoint(
-            checkpoint_path=checkpoint_path,
-            checkpoint_freq=checkpoint_freq,
-            iter_no=iter_no,
-            model=model,
-            optimizer=optimizer,
-            plotter=plotter,
-            scheduler=scheduler,
-            load_only=load_only)
+        if not load_only:
+            actual_checkpoint_path = checkpoint_path
+            if is_checkpoint(iter_no, checkpoint_freq):
+                actual_checkpoint_path += f".{iter_no+1}"
+            save_checkpoint(
+                checkpoint_path=actual_checkpoint_path,
+                iter_no=iter_no,
+                model=model,
+                optimizer=optimizer,
+                plotter=plotter,
+                scheduler=scheduler)
 
 
 def train(trainer_params,

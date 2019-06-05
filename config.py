@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+
+# command-line arguments with their default values
+
 PARAMS_CONFIG = {
     # env-specific
     'env_params': {
@@ -95,6 +98,7 @@ PARAMS_CONFIG = {
     },
     # attention-span-specific - refinement on model-specific params
     'attn_span_params': {
+        # TODO: why condition attn_span_loss while there is attn_span_enabled?
         '--attn-span': {
             'action': 'store_true',
             'default': False,

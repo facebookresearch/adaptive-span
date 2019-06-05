@@ -1,102 +1,85 @@
 #!/usr/bin/env python3
 
 import math
-import visdom
-import numpy as np
-import torch
 
-# TODO: not only plot but also log... change name
+
+# TODO: there should be a TrainHistory/Logger object different from the plotter
+# which in turn should just be a method
+
+class Logger:
+    def __init__(self):
+        self._state_dict = dict()
+
+    def load_state_dict(self, state_dict):
+        self._state_dict = state_dict
+
+    def state_dict(self):
+        return self._state_dict
+
+    def log(self, title, value, message=None):
+        if title not in self._state_dict:
+            self._state_dict[title] = []
+        self._state_dict[title].append(value)
+        if message:
+            print(message)
+
+
 class Plotter:
     def __init__(self, plot_enabled, plot_env, plot_host, *args, **kwargs):
         self.plot_enabled = plot_enabled
         self.plot_env = plot_env
         if plot_enabled:
+            import visdom
             self.vis = visdom.Visdom(
                 env=plot_env, server=plot_host)
-        self.plots = dict()
 
-    def set_state(self, state):
-        self.plots = state
 
-    def get_state(self):
-        return self.plots
+    def plot(self, title, X=None):
+        ...
 
-    def log(self, title, value, subtitle=None, opts=None):
-        if subtitle is None:
-            if title not in self.plots:
-                self.plots[title] = {'data': [], 'type': 'line'}
-            self.plots[title]['data'].append(value)
-        else:
-            if title not in self.plots:
-                self.plots[title] = {'data': {}, 'type': 'line'}
-            if subtitle not in self.plots[title]['data']:
-                self.plots[title]['data'][subtitle] = []
-            self.plots[title]['data'][subtitle].append(value)
-        if opts is not None:
-            self.plots[title]['opts'] = opts
 
-    def hist(self, title, data, sub_ind=None):
-        if sub_ind is None:
-            self.plots[title] = {'data': data, 'type': 'hist'}
-        else:
-            if title not in self.plots:
-                self.plots[title] = {'data': {}, 'type': 'hist'}
-            self.plots[title]['data'][sub_ind] = data
+        self._state_dict = dict()
 
-    def image(self, title, data):
-        self.plots[title] = {'data': data, 'type': 'image'}
+    def load_state_dict(self, state_dict):
+        self._state_dict = state_dict
 
-    def update_plot(self):
-        for title, v in self.plots.items():
-            opts = {'title': title}
-            if 'opts' in v:
-                opts.update(v['opts'])
-            if v['type'] == 'line':
-                if title == 'X':
-                    pass
-                elif isinstance(v['data'], dict):
-                    data = []
-                    legend = []
-                    for st, d in v['data'].items():
-                        data.append(d)
-                        legend.append(st)
-                    data = np.transpose(np.array(data))
-                    opts['legend'] = legend
-                    self.vis.line(
-                        Y=data,
-                        X=self.plots['X']['data'],
-                        win=title,
-                        opts=opts)
-                else:
-                    self.vis.line(
-                        Y=v['data'],
-                        X=self.plots['X']['data'],
-                        win=title,
-                        opts=opts)
-            elif v['type'] == 'image':
-                opts.update({'width': 200, 'height': 200})
-                self.vis.image(v['data'], win=title, opts=opts)
-            elif v['type'] == 'hist':
-                if isinstance(v['data'], dict):
-                    data = [v['data'][i] for i in range(len(v['data']))]
-                    data = torch.stack(data)
-                    self.vis.histogram(data, win=title, opts=opts)
-                else:
-                    self.vis.histogram(v['data'], win=title, opts=opts)
+    def state_dict(self):
+        return self._state_dict
+
+    def _update_state_dict(self, title, value):
+        if title not in self._state_dict:
+            self._state_dict[title] = []
+        self._state_dict[title].append(value)
+
+    def _update_plot(self):
+        for title, data in self._state_dict.items():
+            if title != 'X':
+                self.vis.line(
+                    X=self._state_dict['X'],
+                    Y=data,
+                    win=title,
+                    opts={'title': title})
         self.vis.save([self.plot_env])
 
-    def step(self, ep, nb_batches, stat_train, stat_val, elapsed):
+    def step(self, iter_no, nb_batches, stat_train, stat_val, elapsed):
+        X = (iter_no + 1) * nb_batches
+        # TODO: why log(2)
+        train_mp_bpc = stat_train['loss'] / math.log(2)
+        val_bpc = stat_val['loss'] / math.log(2)
         print('{}\ttrain: {:.2f}bpc\tval: {:.2f}bpc\tms/batch: {:.1f}'.format(
-            (ep + 1) * nb_batches,
-            stat_train['loss'] / math.log(2),
-            stat_val['loss'] / math.log(2),
-            elapsed))
-        self.log('train_mp_bpc', stat_train['loss'] / math.log(2))
-        self.log('val_bpc', stat_val['loss'] / math.log(2))
-        self.log('X', (ep + 1) * nb_batches)
+            X, train_mp_bpc, val_bpc, elapsed))
+        self._update_state_dict(
+            title='X',
+            value=X)
+        self._update_state_dict(
+            title='train_mp_bpc',
+            value=train_mp_bpc)
+        self._update_state_dict(
+            title='val_bpc',
+            value=val_bpc)
 
         if self.plot_enabled:
-            self.update_plot()
+            self._update_plot()
 
 
 def get_plotter(plot_params):

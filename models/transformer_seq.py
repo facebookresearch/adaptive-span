@@ -7,8 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # TODO: review import statements
-from models.utils import skew, unskew
-from attn_span.attn_span import AttnSpanMixin
+from attn_span.seq_attention import SeqAttention
 
 # B =  _sz
 # H = hidden_size
@@ -18,78 +17,6 @@ from attn_span.attn_span import AttnSpanMixin
 # each position will only attent to its previous L positions
 # (from the lower layer)
 # no self-attention: L positions doesn't include the current step
-
-
-# TODO: given models share commom fields, create a parent class/abs class/mixin
-
-class SeqAttention(nn.Module, AttnSpanMixin):
-    def __init__(self,
-                 dropout,
-                 hidden_size,
-                 nb_heads,
-                 attn_lim,
-                 attn_span_len,
-                 attn_span_init,
-                 attn_span_loss,
-                 block_size,
-                 *args, **kwargs):
-        nn.Module.__init__(self)
-        AttnSpanMixin.__init__(self, ...)
-        self.dropout = nn.Dropout(dropout)
-        self.nb_heads = nb_heads
-        self.head_dim = hidden_size // nb_heads
-        self.attn_span_loss = attn_span_loss
-        self.attn_lim = attn_lim
-        self.block_size = block_size
-        if self.attn_span_loss > 0:
-            attn_span.add_span_mask(attn_lim=attn_lim,
-                                    attn_span_len=attn_span_len,
-                                    attn_span_init=attn_span_init,
-                                    nb_heads=nb_heads,
-                                    model=self)
-
-    # TODO: shouldn't all the forward be in the AttnSpanMixin?
-    def forward(self, query, key, value, key_pe):
-        # B = query.size(0)
-        H = self.head_dim
-        # L = self.attn_lim
-        # M = self.block_size
-        # query = B x M x H
-        # key, value = B x (M+L) x H
-
-        # compute attention span
-        if self.attn_span_loss > 0:
-            skip_len = attn_span.compute(attn_lim=self.attn_lim, model=self)
-            key, value, key_pe = attn_span.crop(skip_len=skip_len,
-                                                key=key,
-                                                value=value,
-                                                key_pe=key_pe,
-                                                attn_lim=self.attn_lim,
-                                                block_size=self.block_size)
-
-        # compute attention from context
-        # B x M (dest) x (M+L) (src)
-        attn_cont = torch.matmul(query, key.transpose(-1, -2))
-        attn_cont = unskew(attn_cont)  # B x M x L
-
-        # compute the effect of position embedding
-        attn_pos = torch.matmul(query, key_pe)  # B x M x L_pos
-        attn = attn_cont + attn_pos
-
-        attn = attn / math.sqrt(H)  # B x M X L_pos
-        attn = F.softmax(attn, dim=-1)
-
-        if self.attn_span_loss > 0:
-            attn = attn_span.mask(nb_heads=self.nb_heads,
-                                  attn=attn,
-                                  model=self,
-                                  skip_len=skip_len)
-        attn = self.dropout(attn)  # B x M X L_pos
-
-        attn_cont = skew(attn, 0)  # B x M X (L+M)
-        out = torch.matmul(attn_cont, value)  # B x M x H
-
-        return out
 
 
 class MultiHeadSeqAttention(nn.Module):
@@ -226,6 +153,7 @@ class TransformerSeq(nn.Module):
         h_cache = []
         for l, layer in enumerate(self.layers):
             cache_size = attn_span.get_cache_size(layer.attn.attn)
+            cache_size = layer.attn.attn.get_cache_size()
             if cache_size > self.block_size:
                 h_cache_l = torch.cat(
                     [h_prev[l][:, -cache_size + self.block_size:, :], h],
