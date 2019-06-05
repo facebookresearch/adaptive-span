@@ -13,6 +13,7 @@ def _get_model(device,
                distributed,
                *args,
                **kwargs):
+    # TODO: include vocab_size
     model = TransformerSeq(
         **{**model_params, **attn_params})
     if distributed:

@@ -5,7 +5,7 @@ import visdom
 import numpy as np
 import torch
 
-
+# TODO: not only plot but also log... change name
 class Plotter:
     def __init__(self, plot_enabled, plot_env, plot_host, *args, **kwargs):
         self.plot_enabled = plot_enabled

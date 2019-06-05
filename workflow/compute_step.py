@@ -6,6 +6,8 @@ import torch
 import submitit
 
 
+# TODO: env set up, change name
+
 def _torch_distributed_init_process_group(distributed: bool,
                                           submitit_enabled: bool,
                                           dist_init: str,

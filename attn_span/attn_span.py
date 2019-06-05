@@ -9,8 +9,13 @@ from models.adaptive_mask import AdaptiveMask
 
 # Adaptive attention span for Transformer
 
-def init(args, model):
-    model.span_mask = AdaptiveMask(args.attn_lim, args.attn_span_len, init_ratio=args.attn_span_init, shape=(args.nheads, 1, 1), sum_normalize=True)
+
+def add_span_mask(attn_lim, attn_span_len, attn_span_init, nb_heads, model):
+    model.span_mask = AdaptiveMask(attn_lim,
+                                   attn_span_len,
+                                   init_ratio=attn_span_init,
+                                   shape=(nb_heads, 1, 1),
+                                   sum_normalize=True)
 
 
 # compute how long the attention span should be
@@ -33,14 +38,17 @@ def get_cache_size(model):
 
 
 # crop out unnecessary computation
-def crop(args, skip_len, key, value, key_pe):
-    cache_size = key.size(1) - args.mem_sz
-    skip_len2 = skip_len - (args.attn_lim - cache_size)
+def crop(skip_len, key, value, key_pe, attn_lim, mem_size):
+    # TODO: where is mem_sz defined?
+    cache_size = key.size(1) - mem_size
+    skip_len2 = skip_len - (attn_lim - cache_size)
     if skip_len2 > 0:
         key = key[:, skip_len2:, :]
         value = value[:, skip_len2:, :]
     elif skip_len2 < 0:
-        print('warning: cache is too short. cache_size={} skip_len={}'.format(cache_size, skip_len))
+        # TODO: replace print by proper logger
+        print('warning: cache is too short. cache_size={} skip_len={}'.
+              format(cache_size, skip_len))
         key = F.pad(key, [0, 0, -skip_len2, 0])
         value = F.pad(value, [0, 0, -skip_len2, 0])
     if skip_len > 0:
@@ -66,7 +74,7 @@ def loss(model, attn_span_loss, attn_lim):
                              for l in model.module.layers)
 
 
-def param_clamp(args, model):
+def param_clamp(model):
     for l in model.module.layers:
         l.attn.attn.span_mask.size_ratio.data.clamp_(0, 1)
 

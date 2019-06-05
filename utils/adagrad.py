@@ -1,3 +1,5 @@
+# TODO: add licence or subclass adagrad from pytorch
+
 # This is copied from PyTorch
 # Sainaa: add gradient clipping
 

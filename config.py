@@ -63,6 +63,7 @@ PARAMS_CONFIG = {
             'help': 'limit attention span',
             'dest': 'attn_lim'
         },
+        # TODO: mem_sz is block_sz
         '--block-sz': {
             'type': int,
             'default': 64,
@@ -98,8 +99,7 @@ PARAMS_CONFIG = {
             'dest': 'attn_span_loss'
         },
         '--attn-span-len': {
-            # TODO: shouldn't it be an int?
-            'type': float,
+            'type': int,
             'default': 32,
             'help': 'learn attention span',
             'dest': 'attn_span_len'
@@ -139,12 +139,14 @@ PARAMS_CONFIG = {
         },
         # TODO: is it not in violation of batch_size?
         # because we can set either one or the other, not both
+        # epoch is actually when we plot thing, not a pass on whole dataset
         '--nbatches': {
             'type': int,
             'default': 1000,
             'help': 'number of batches in each epoch',
             'dest': 'nb_batches'
         },
+        # TODO: change name epoch...
         '--nepochs': {
             'type': int,
             'default': 1000,
@@ -205,7 +207,7 @@ PARAMS_CONFIG = {
             'type': str,
             'default': 0.03,
             # TODO: REMOVE DEFAULT!!!
-            'help': '/private/home/sainbar/data/pennchar',
+            'help': '/privfate/home/sainbar/data/pennchar',
             'dest': 'data_path'
         },
     },
@@ -220,7 +222,7 @@ PARAMS_CONFIG = {
         '--checkpoint-freq': {
             'type': int,
             'default': 0,
-            # TODO: what is the unit?
+            # TODO: what is the unit: nb of epochs, see lqtest commit
             'help': 'how often to keep a copy',
             'dest': 'checkpoint_freq'
         },
