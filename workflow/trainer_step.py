@@ -19,11 +19,11 @@ def _train_batch(model,
                  stat,
                  attn_lim,
                  attn_span_loss,
+                 block_size,
                  test_only=False,
                  h_cache=None):
-    # TODO: where is mem_sz defined?
-    X = data[:, offset: offset + args.mem_sz].contiguous()
-    Y = data[:, offset + 1: offset + args.mem_sz + 1].contiguous()
+    X = data[:, offset: offset + block_size].contiguous()
+    Y = data[:, offset + 1: offset + block_size + 1].contiguous()
 
     out, h_cache = model(X, h_cache, Y)
     out = out.view(-1, out.size(-1))
@@ -47,17 +47,18 @@ def _train_batch(model,
     return h_cache
 
 
-def _train_single_epoch(model,
-                        optimizer,
-                        scheduler,
-                        data,
-                        nb_batches,
-                        full_test,
-                        attn_lim,
-                        attn_span_loss,
-                        test_only=False,
-                        train_pos=-1,
-                        h_cache=None):
+def _train_single_iteration(model,
+                            optimizer,
+                            scheduler,
+                            data,
+                            nb_batches,
+                            full_test,
+                            attn_lim,
+                            attn_span_loss,
+                            block_size,
+                            test_only=False,
+                            train_pos=-1,
+                            h_cache=None):
     stat = dict()
     # TODO: clean-up full_test, test_only, test_mode, attn_span_loss > 0, etc
     if test_only:
@@ -66,8 +67,7 @@ def _train_single_epoch(model,
         model.train()
 
     nb_batches_max = nb_batches
-    # TODO: where is mem_sz defined?
-    pos_shift_len = args.mem_sz
+    pos_shift_len = block_size
     if test_only:
         if full_test:
             assert train_pos == 0
@@ -85,8 +85,7 @@ def _train_single_epoch(model,
         from tqdm import tqdm
         pbar = tqdm(total=data.size(1))
 
-    # TODO: where is mem_sz defined?
-    pos_max = data.size(1) - args.mem_sz
+    pos_max = data.size(1) - block_size
     nbatches = 0
     for batch_ind in range(nb_batches_max):
         if train_pos >= 0:
@@ -112,8 +111,7 @@ def _train_single_epoch(model,
                     # only test once
                     break
                 # randomize offset to reduce overfitting
-                # TODO: where is mem_sz defined?
-                train_pos = random.randrange(args.mem_sz)
+                train_pos = random.randrange(block_size)
                 for h in h_cache:
                     h.fill_(0)
 
@@ -139,7 +137,7 @@ def _train(device,
            batch_size,
            hidden_size,
            full_test,
-           nb_epochs,
+           nb_iter,
            distributed,
            world_size,
            nb_batches,
@@ -148,13 +146,13 @@ def _train(device,
            plot_enabled,
            *args, **kwargs):
     # resume training from last checkpoint
-    ep_init = load_checkpoint(
+    iter_init = load_checkpoint(
         checkpoint_path=checkpoint_path,
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
         plotter=plotter,
-        distributed=compute_params['distributed'])
+        distributed=env_params['distributed'])
 
     # hid == cache init
     # pos: 0 --> sequential /  -1 --> random
@@ -172,7 +170,7 @@ def _train(device,
 
     if full_test:
         with torch.no_grad():
-            stat_val, pos[1], hid[1] = _train_single_epoch(
+            stat_val, pos[1], hid[1] = _train_single_iteration(
                 args, model=model,
                 optimizer=optimizer, scheduler=scheduler, data=val_data,
                 attn_lim=attn_lim, attn_span_loss=attn_span_loss,
@@ -180,7 +178,7 @@ def _train(device,
             # TODO: replace print by logger
             print('val: {:.3f}bpc'.format(stat_val['loss'] / math.log(2)))
 
-            stat_test, pos[2], hid[2] = _train_single_epoch(
+            stat_test, pos[2], hid[2] = _train_single_iteration(
                 args, model=model,
                 optimizer=optimizer, scheduler=scheduler, data=test_data,
                 test_only=True, train_pos=pos[2], h_cache=hid[2])
@@ -188,18 +186,18 @@ def _train(device,
             print('test: {:.3f}bpc'.format(stat_test['loss'] / math.log(2)))
         return
 
-    for ep in range(ep_init, nb_epochs):
+    for iter_no in range(iter_init, nb_iter):
         t_sta = time.time()
         # here the loss includes auxilary losses such as multi-position
         # training
-        stat_train, pos[0], hid[0] = _train_single_epoch(
+        stat_train, pos[0], hid[0] = _train_single_iteration(
             args, model=model,
             optimizer=optimizer, scheduler=scheduler, data=train_data,
             attn_lim=attn_lim, attn_span_loss=attn_span_loss,
             train_pos=pos[0], h_cache=hid[0])
         elapsed = 1000 * (time.time() - t_sta) / nbatches
         with torch.no_grad():
-            stat_val, pos[1], hid[1] = _train_single_epoch(
+            stat_val, pos[1], hid[1] = _train_single_iteration(
                 args, model=model,
                 optimizer=optimizer, scheduler=scheduler, data=val_data,
                 attn_lim=attn_lim, attn_span_loss=attn_span_loss,
@@ -222,7 +220,7 @@ def _train(device,
                 plot_enabled=plot_enabled, model=model,
                 plotter=plotter, stat_train=stat_train)
 
-        plotter.step(ep=ep,
+        plotter.step(iter_no=iter_no,
                      nb_batches=nb_batches,
                      stat_train=stat_train,
                      stat_val=stat_val,
@@ -233,7 +231,7 @@ def _train(device,
         save_checkpoint(
             checkpoint_path=checkpoint_path,
             checkpoint_freq=checkpoint_freq,
-            ep=ep,
+            iter_no=iter_no,
             model=model,
             optimizer=optimizer,
             plotter=plotter,
@@ -242,7 +240,7 @@ def _train(device,
 
 
 def train(trainer_params,
-          compute_params,
+          env_params,
           model_params,
           attn_span_params,
           optim_params,
@@ -263,7 +261,7 @@ def train(trainer_params,
            train_data=train_data,
            val_data=val_data,
            test_data=test_data,
-           **{**compute_params,
+           **{**env_params,
               **model_params,
               **attn_span_params,
               **optim_params,

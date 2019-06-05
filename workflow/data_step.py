@@ -48,7 +48,8 @@ class Corpus:
             text_path=os.path.join(data_path, 'test.txt'),
             dictionary_to_update=self._dictionary)
 
-    def __len__(self):
+    @property
+    def vocab_size(self):
         return len(self._dictionary)
 
 
@@ -62,20 +63,23 @@ def _batchify(data_tensor, batch_size):
     return data_tensor
 
 
-def _get_train_val_test_data(data_path,
-                             batch_size,
-                             device,
-                             rank: int,
-                             *args,
-                             **kwargs):
+def _build_corpus(data_path, *args, **kwargs):
     corpus_path = os.path.join(data_path, 'corpus.pt')
     if os.path.exists(corpus_path):
         corpus = torch.load(corpus_path)
     else:
         corpus = Corpus(data_path)
         torch.save(corpus, corpus_path)
-    # TODO: see where vocab_sz is used
-    args.vocab_sz = len(corpus)
+    return corpus
+
+
+def _get_train_val_test_data(corpus,
+                             batch_size,
+                             device,
+                             rank: int,
+                             *args,
+                             **kwargs):
+    # TODO: slice not compatible with tensor
     slice_data = slice(
         batch_size * rank,
         batch_size * (rank + 1))
@@ -86,6 +90,12 @@ def _get_train_val_test_data(data_path,
     ]
 
 
-def get_train_val_test_data(data_params, compute_params, device):
+def get_train_val_test_data(data_params, env_params, device):
+    corpus = _build_corpus(**data_params)
+    data_params['vocab_size'] = corpus.vocab_size
     return _get_train_val_test_data(
-        device=device, **compute_params, **data_params)
+        corpus=corpus, device=device, **env_params, **data_params)
+
+
+def get_vocab_size(data_params):
+    return data_params['vocab_size']

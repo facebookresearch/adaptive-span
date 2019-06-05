@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 PARAMS_CONFIG = {
-    # computation-specific
-    'compute_params': {
+    # env-specific
+    'env_params': {
         '--no-cuda': {
             'action': 'store_true',
             'default': False,
@@ -15,7 +15,7 @@ PARAMS_CONFIG = {
             'help': 'distributed training',
             'dest': 'distributed'
         },
-        # TODO: mnove to the submit_fair folder
+        # TODO: remove submitit
         '--submitit': {
             'action': 'store_true',
             'default': False,
@@ -35,6 +35,16 @@ PARAMS_CONFIG = {
             'default': 0,
             'help': '',
             'dest': 'local_rank'
+        },
+    },
+    # data-specific
+    'data_params': {
+        '--data': {
+            'type': str,
+            'default': 0.03,
+            # TODO: REMOVE DEFAULT!!!
+            'help': '/privfate/home/sainbar/data/pennchar',
+            'dest': 'data_path'
         },
     },
     # model-specific
@@ -63,7 +73,6 @@ PARAMS_CONFIG = {
             'help': 'limit attention span',
             'dest': 'attn_lim'
         },
-        # TODO: mem_sz is block_sz
         '--block-sz': {
             'type': int,
             'default': 64,
@@ -137,21 +146,17 @@ PARAMS_CONFIG = {
             'help': 'batch size',
             'dest': 'batch_size'
         },
-        # TODO: is it not in violation of batch_size?
-        # because we can set either one or the other, not both
-        # epoch is actually when we plot thing, not a pass on whole dataset
         '--nbatches': {
             'type': int,
             'default': 1000,
-            'help': 'number of batches in each epoch',
+            'help': 'number of batches in each iteration',
             'dest': 'nb_batches'
         },
-        # TODO: change name epoch...
-        '--nepochs': {
+        '--niter': {
             'type': int,
             'default': 1000,
-            'help': 'number of epochs to train',
-            'dest': 'nb_epochs'
+            'help': 'number of iterations to train',
+            'dest': 'nb_iter'
         },
         '--optim': {
             'type': str,
@@ -201,16 +206,6 @@ PARAMS_CONFIG = {
             'dest': 'plot_host'
         },
     },
-    # data-specific
-    'data_params': {
-        '--data': {
-            'type': str,
-            'default': 0.03,
-            # TODO: REMOVE DEFAULT!!!
-            'help': '/privfate/home/sainbar/data/pennchar',
-            'dest': 'data_path'
-        },
-    },
     # trainer-specific
     'trainer_params': {
         '--checkpoint': {
@@ -222,8 +217,7 @@ PARAMS_CONFIG = {
         '--checkpoint-freq': {
             'type': int,
             'default': 0,
-            # TODO: what is the unit: nb of epochs, see lqtest commit
-            'help': 'how often to keep a copy',
+            'help': 'how often to keep a copy, in nb of iterations',
             'dest': 'checkpoint_freq'
         },
         '--load-only': {

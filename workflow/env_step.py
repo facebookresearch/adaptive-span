@@ -2,11 +2,9 @@
 
 import torch
 
-# TODO: remove (with decorator?)
+# TODO: remove
 import submitit
 
-
-# TODO: env set up, change name
 
 def _torch_distributed_init_process_group(distributed: bool,
                                           submitit_enabled: bool,
@@ -16,7 +14,6 @@ def _torch_distributed_init_process_group(distributed: bool,
                                           **kwargs):
     rank, world_size = 0, 1
     if distributed:
-        # TODO: SHOULD BE IN submit_fair !!!
         if submitit_enabled:
             job_env = submitit.JobEnvironment()
             rank = job_env.global_rank
@@ -49,12 +46,12 @@ def _get_device(cuda_enabled: bool):
     return torch.device('cpu')
 
 
-def initialize_computation_and_update_params(compute_params):
-    compute_params.update(
-        _torch_distributed_init_process_group(**compute_params))
-    compute_params['device'] = _get_device(
-        cuda_enabled=not compute_params['no_cuda'])
+def set_up_env(env_params):
+    env_params.update(
+        _torch_distributed_init_process_group(**env_params))
+    env_params['device'] = _get_device(
+        cuda_enabled=not env_params['no_cuda'])
 
 
-def get_device(compute_params):
-    return compute_params['device']
+def get_device(env_params):
+    return env_params['device']

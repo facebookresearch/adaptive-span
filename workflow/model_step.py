@@ -7,14 +7,17 @@ from models import TransformerSeq
 
 
 def _get_model(device,
+               vocab_size,
                model_params,
                attn_params,
                local_rank,
                distributed,
                *args,
                **kwargs):
-    # TODO: include vocab_size
     model = TransformerSeq(
+        vocab_size=vocab_size,
+        model_params=model_params,
+        attn_params=attn_params,
         **{**model_params, **attn_params})
     if distributed:
         model = model.to(device, dtype=torch.float32)
@@ -26,8 +29,9 @@ def _get_model(device,
     return model
 
 
-def get_model(model_params, attn_params, compute_params, device):
+def get_model(model_params, attn_params, env_params, device, vocab_size):
     return _get_model(device=device,
+                      vocab_size=vocab_size,
                       model_params=model_params,
                       attn_params=attn_params,
-                      **compute_params)
+                      **env_params)

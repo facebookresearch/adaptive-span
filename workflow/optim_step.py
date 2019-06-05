@@ -5,6 +5,7 @@ import torch.optim as optim
 # TODO: review import statements
 from utils.adagrad import Adagrad
 
+
 def _get_grad_requiring_params(model):
     nb_parameters = 0
     grad_requiring_params = []
@@ -12,7 +13,6 @@ def _get_grad_requiring_params(model):
         if param.requires_grad:
             nb_parameters += param.numel()
             grad_requiring_params.append(param)
-    # TODO: logger instead of print
     print('nb_parameters={:.2f}M'.format(nb_parameters / 1e6))
     return grad_requiring_params
 
@@ -47,8 +47,8 @@ def _get_scheduler(optimizer, lr_warmup: int, *args, **kwargs):
     return None
 
 
-def update_optim_params(optim_params, compute_params):
-    optim_params['batch_size'] //= compute_params['world_size']
+def update_optim_params(optim_params, env_params):
+    optim_params['batch_size'] //= env_params['world_size']
 
 
 def get_optimizer_and_scheduler(model, optim_params):

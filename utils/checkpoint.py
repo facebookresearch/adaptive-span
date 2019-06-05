@@ -19,13 +19,13 @@ def _load_checkpoint(checkpoint_path,
                        map_location=lambda storage, loc: storage)
     else:
         f = torch.load(checkpoint_path)
-    ep_init = f['epoch']
+    iter_init = f['iter_no']
     model.load_state_dict(f['model'])
     plotter.set_state(f['plotter'])
     optimizer.load_state_dict(f['optimizer'])
-    if 'scheduler_epoch' in f:
+    if 'scheduler_iter' in f:
         # scheduler.load_state_dict(f['scheduler'])
-        scheduler.step(f['scheduler_epoch'])
+        scheduler.step(f['scheduler_iter'])
 
     return ep_init
 
@@ -37,28 +37,19 @@ def load_checkpoint(checkpoint_path,
                     plotter,
                     distributed) -> int:
     if checkpoint_path and os.path.exists(checkpoint_path):
-        try:
-            return _load_checkpoint(checkpoint_path, model, optimizer,
-                                    plotter, scheduler, distributed)
-        # TODO: BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
-        except:
-            print('load failed')
-            # try the backup checkpoint
-            if os.path.exists(checkpoint_path + '.bak'):
-                try:
-                    return _load_checkpoint(checkpoint_path + '.bak', model,
-                                            optimizer, plotter, scheduler,
-                                            distributed)
-                # TODO: BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
-                except:
-                    print('load failed')
+        return _load_checkpoint(checkpoint_path=checkpoint_path,
+                                model=model,
+                                optimizer=optimizer,
+                                plotter=plotter,
+                                scheduler=scheduler,
+                                distributed=distributed)
 
     return 0
 
 
 def save_checkpoint(checkpoint_path,
                     checkpoint_freq,
-                    ep,
+                    iter_no,
                     model,
                     optimizer,
                     plotter,
@@ -66,20 +57,14 @@ def save_checkpoint(checkpoint_path,
                     load_only):
     if checkpoint_path and not load_only:
         if os.path.exists(checkpoint_path):
-            if checkpoint_freq > 0 and ep > 0 and ep % checkpoint_freq == 0:
-                try:
-                    shutil.copyfile(
-                        checkpoint_path, checkpoint_path + '.' + str(ep))
-                # TODO: BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
-                except:
-                    print('save copy failed')
-            # make a backup in case this save fails
-            os.replace(checkpoint_path, checkpoint_path + '.bak')
+            if checkpoint_freq > 0 and iter_no > 0 and iter_no % checkpoint_freq == 0:
+                shutil.copyfile(
+                    checkpoint_path, checkpoint_path + '.' + str(ep))
         f = dict()
-        f['epoch'] = ep + 1
+        f['iter_no'] = iter_no + 1
         f['model'] = model.state_dict()
         f['plotter'] = plotter.get_state()
         f['optimizer'] = optimizer.state_dict()
         if scheduler is not None:
-            f['scheduler_epoch'] = scheduler.last_epoch
+            f['scheduler_iter'] = scheduler.last_epoch
         torch.save(f, checkpoint_path)

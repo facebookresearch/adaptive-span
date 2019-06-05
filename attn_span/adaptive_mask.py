@@ -1,19 +1,25 @@
-import random
+#!/usr/bin/env python3
+
 import math
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 # This class implements an adaptive masking function
 
+
 class AdaptiveMask(nn.Module):
-    def __init__(self, size, ramp_size, init_ratio=0, shape=(1,), sum_normalize=False):
-        super(AdaptiveMask, self).__init__()
+    def __init__(self,
+                 size,
+                 ramp_size,
+                 init_ratio=0,
+                 shape=(1,),
+                 sum_normalize=False):
+        nn.Module.__init__(self)
         self.size = size
         self.ramp_size = ramp_size
         self.size_ratio = nn.Parameter(torch.zeros(*shape) + init_ratio)
         self.sum_normalize = sum_normalize
-        mask_template = torch.linspace(1-size, 0, steps=size)
+        mask_template = torch.linspace(1 - size, 0, steps=size)
         self.register_buffer('mask_template', mask_template)
 
     def forward(self, x, skip_len=0):
@@ -24,7 +30,7 @@ class AdaptiveMask(nn.Module):
             mask = mask[:, :, skip_len:]
         x = x * mask
         if self.sum_normalize:
-            x = x / (x.sum(-1, keepdim=True) + 1e-8) # normalize so sum is 1
+            x = x / (x.sum(-1, keepdim=True) + 1e-8)  # normalize so sum is 1
         return x
 
     def get_max_size(self):
