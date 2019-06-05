@@ -1,26 +1,13 @@
-from __future__ import print_function
-from argparse import Namespace
+#!/usr/bin/env python3
+
 import math
-import random
+
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+
 from models.adaptive_mask import AdaptiveMask
 
 # Adaptive attention span for Transformer
-
-def add_args(parser):
-    parser.add_argument('--attn-span', action='store_true', default=False,
-                        help='learn attention span')
-    parser.add_argument('--attn-span-loss', type=float, default=0,
-                        help='learn attention span')
-    parser.add_argument('--attn-span-len', type=float, default=32,
-                        help='learn attention span')
-    parser.add_argument('--attn-span-init', type=float, default=0,
-                        help='initial attention span ratio value')
-    parser.add_argument('--attn-span-cache', action='store_true', default=False,
-                        help='change cache size')
-
 
 def init(args, model):
     model.span_mask = AdaptiveMask(args.attn_lim, args.attn_span_len, init_ratio=args.attn_span_init, shape=(args.nheads, 1, 1), sum_normalize=True)
@@ -73,11 +60,10 @@ def mask(args, attn, model, skip_len):
 
 
 # compute the loss
-def loss(args, model, stat):
-    loss = 0
-    for l in model.module.layers:
-        loss = loss + l.attn.attn.span_mask.size_ratio.mean() * args.attn_span_loss * args.attn_lim
-    return loss
+def loss(model, attn_span_loss, attn_lim):
+    loss_factor = attn_span_loss * attn_lim
+    return loss_factor * sum(l.attn.attn.span_mask.size_ratio.mean()
+                             for l in model.module.layers)
 
 
 def param_clamp(args, model):
@@ -85,14 +71,15 @@ def param_clamp(args, model):
         l.attn.attn.span_mask.size_ratio.data.clamp_(0, 1)
 
 
-def log(args, model, logger, stat_train):
+# TODO: plot enabled should be in the plotter object not in plot
+def plot(plot_enabled, model, plotter, stat_train):
     x = []
     for i, l in enumerate(model.module.layers):
         span = l.attn.attn.span_mask.size_ratio.view(-1)
         x.append(span)
         span = span.mean().item()
-    x = torch.cat(x,dim=0)
-    logger.log('span_avg', x.mean().item())
-    logger.log('span_max', x.max().item())
-    if args.plot:
-        logger.vis.line(x, win='span_latest', opts={'title': 'span_latest'})
+    x = torch.cat(x, dim=0)
+    plotter.log('span_avg', x.mean().item())
+    plotter.log('span_max', x.max().item())
+    if plot_enabled:
+        plotter.vis.line(x, win='span_latest', opts={'title': 'span_latest'})

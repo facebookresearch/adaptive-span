@@ -33,8 +33,8 @@ def _load_checkpoint(checkpoint_path,
 def load_checkpoint(checkpoint_path,
                     model,
                     optimizer,
-                    plotter,
                     scheduler,
+                    plotter,
                     distributed) -> int:
     if checkpoint_path and os.path.exists(checkpoint_path):
         try:
@@ -49,7 +49,7 @@ def load_checkpoint(checkpoint_path,
                     return _load_checkpoint(checkpoint_path + '.bak', model,
                                             optimizer, plotter, scheduler,
                                             distributed)
-                #  TODO; BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
+                # TODO: BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
                 except:
                     print('load failed')
 
@@ -62,14 +62,15 @@ def save_checkpoint(checkpoint_path,
                     model,
                     optimizer,
                     plotter,
-                    scheduler):
-    if checkpoint_path and not args.load_only:
+                    scheduler,
+                    load_only):
+    if checkpoint_path and not load_only:
         if os.path.exists(checkpoint_path):
             if checkpoint_freq > 0 and ep > 0 and ep % checkpoint_freq == 0:
                 try:
                     shutil.copyfile(
                         checkpoint_path, checkpoint_path + '.' + str(ep))
-                #  TODO; BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
+                # TODO: BE MORE SPECIFIC ABOUT THE EXCEPTION !!!
                 except:
                     print('save copy failed')
             # make a backup in case this save fails

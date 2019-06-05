@@ -42,7 +42,7 @@ SUBMIT_PARAMS_CONFIG = {
         '--args': {
             'type': str,
             'default': '',
-            'help': '',
+            'help': 'args for the actual function',
             'dest': 'args'
         },
     }

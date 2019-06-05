@@ -7,10 +7,10 @@ import torch
 
 
 class Plotter:
-    def __init__(self, plot, plot_env, plot_host):
-        self.plot = plot
+    def __init__(self, plot_enabled, plot_env, plot_host, *args, **kwargs):
+        self.plot_enabled = plot_enabled
         self.plot_env = plot_env
-        if plot:
+        if plot_enabled:
             self.vis = visdom.Visdom(
                 env=plot_env, server=plot_host)
         self.plots = dict()
@@ -95,5 +95,9 @@ class Plotter:
         self.log('val_bpc', stat_val['loss'] / math.log(2))
         self.log('X', (ep + 1) * nb_batches)
 
-        if self.plot:
+        if self.plot_enabled:
             self.update_plot()
+
+
+def get_plotter(plot_params):
+    return Plotter(**plot_params)

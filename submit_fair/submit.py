@@ -10,7 +10,7 @@ import submitit
 # TODO: review import statements
 from submit_params_config import *
 from utils.params import get_params
-from main import launch_from_cli
+from main import launch
 from params_config import PARAMS_CONFIG
 
 

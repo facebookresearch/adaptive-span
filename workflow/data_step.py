@@ -4,7 +4,7 @@ import os
 import torch
 
 
-def tokenize(text_path, dictionary_to_update):
+def _tokenize(text_path, dictionary_to_update):
     """Tokenizes a text file."""
     assert os.path.exists(text_path)
 
@@ -38,13 +38,13 @@ def tokenize(text_path, dictionary_to_update):
 class Corpus:
     def __init__(self, data_path):
         self._dictionary = {}
-        self.train = tokenize(
+        self.train = _tokenize(
             text_path=os.path.join(data_path, 'train.txt'),
             dictionary_to_update=self._dictionary)
-        self.valid = tokenize(
+        self.valid = _tokenize(
             text_path=os.path.join(data_path, 'valid.txt'),
             dictionary_to_update=self._dictionary)
-        self.test = tokenize(
+        self.test = _tokenize(
             text_path=os.path.join(data_path, 'test.txt'),
             dictionary_to_update=self._dictionary)
 
@@ -52,7 +52,7 @@ class Corpus:
         return len(self._dictionary)
 
 
-def batchify(data_tensor, batch_size):
+def _batchify(data_tensor, batch_size):
     # Work out how cleanly we can divide the dataset into batch_size parts.
     nb_batches = data_tensor.size(0) // batch_size
     # Trim off any extra elements that wouldn't cleanly fit (remainders).
@@ -62,11 +62,12 @@ def batchify(data_tensor, batch_size):
     return data_tensor
 
 
-def get_data(data_path,
-             batch_size,
-             world_size,
-             device,
-             distributed: bool):
+def _get_train_val_test_data(data_path,
+                             batch_size,
+                             device,
+                             rank: int,
+                             *args,
+                             **kwargs):
     corpus_path = os.path.join(data_path, 'corpus.pt')
     if os.path.exists(corpus_path):
         corpus = torch.load(corpus_path)
@@ -75,22 +76,16 @@ def get_data(data_path,
         torch.save(corpus, corpus_path)
     # TODO: see where vocab_sz is used
     args.vocab_sz = len(corpus)
-    data = {
-        'train_data': batchify(corpus.train, batch_size).to(device),
-        'val_data': batchify(corpus.valid, batch_size).to(device),
-        'test_data': batchify(corpus.test, batch_size).to(device)
-    }
-    if distributed:
-        rank = torch.distributed.get_rank()
-        torch.distributed.get_world_size()
-        batch_sz = batch_size // world_size
-        slice_data = slice(
-            batch_sz * rank,
-            batch_sz * (rank + 1))
-    else:
-        slice_data = slice(None)
-    return {
-        'train_data': batchify(corpus.train, batch_size).to(device)[slice_data],
-        'val_data': batchify(corpus.valid, batch_size).to(device)[slice_data],
-        'test_data': batchify(corpus.test, batch_size).to(device)[slice_data]
-    }
+    slice_data = slice(
+        batch_size * rank,
+        batch_size * (rank + 1))
+    return [
+        _batchify(corpus.train, batch_size).to(device)[slice_data],
+        _batchify(corpus.valid, batch_size).to(device)[slice_data],
+        _batchify(corpus.test, batch_size).to(device)[slice_data]
+    ]
+
+
+def get_train_val_test_data(data_params, compute_params, device):
+    return _get_train_val_test_data(
+        device=device, **compute_params, **data_params)
