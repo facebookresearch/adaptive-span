@@ -6,8 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# TODO: review import statements
-from attn_span.seq_attention import SeqAttention
+from adaptive_span import AdaptiveSpan
 
 # B =  _sz
 # H = hidden_size
@@ -17,6 +16,28 @@ from attn_span.seq_attention import SeqAttention
 # each position will only attent to its previous L positions
 # (from the lower layer)
 # no self-attention: L positions doesn't include the current step
+
+
+# shift every row 1 step to right
+def _skew(X, pad_value):
+    # X = B x M x L
+    B, M, L = X.size()
+    X = F.pad(X, (0, M + 1), value=pad_value)  # B x M x (L+M+1)
+    X = X.view(B, -1)  # B x ML+MM+M
+    X = X[:, :-M]  # B x ML+MM
+    X = X.view(B, M, M + L)  # B x M x L+M
+    return X
+
+
+def _unskew(X):
+    # X = B x M x L+M
+    B, M, L = X.size()
+    L -= M
+    X = X.view(B, -1)  # B x ML+MM
+    X = F.pad(X, (0, M))  # B x ML+MM+M
+    X = X.view(B, M, M + L + 1)  # B x M x L+M+1
+    X = X[:, :, :L]  # B x M x L
+    return X
 
 
 class SeqAttention(nn.Module):
@@ -42,13 +63,17 @@ class SeqAttention(nn.Module):
         self.attn_span_lim = attn_span_lim
         self.attn_span_loss = attn_span_loss
         self.block_size = block_size
-        # self.span_mask = AdaptiveMask(size=attn_span_lim,
-        #                               ramp_size=attn_span_len,
-        #                               init_ratio=attn_span_init,
-        #                               shape=(nb_heads, 1, 1),
-        #                               sum_normalize=True)
-        # TODO: make AdaptiveSpan omherit from Adaptive mask
-        self.adaptive_span = AdaptiveSpan(...)
+        self.adaptive_span = AdaptiveSpan(
+            attn_span_lim=attn_span_lim,
+            attn_span_len=attn_span_len,
+            attn_span_init=attn_span_init,
+            nb_heads=nb_heads,
+            attn_span_enabled=attn_span_enabled,
+            attn_span_cache_enabled=attn_span_cache_enabled,
+            dropout=dropout,
+            hidden_size=hidden_size,
+            attn_span_loss=attn_span_loss,
+            block_size=block_size)
 
     def forward(self, query, key, value, key_pe):
         # B = query.size(0)
@@ -60,16 +85,16 @@ class SeqAttention(nn.Module):
 
         # compute attention span
         if self.attn_span_loss > 0:
-            skip_len = self.adaptive_span._compute_skip_len()
-            key, value, key_pe = self._crop(key=key,
-                                            value=value,
-                                            key_pe=key_pe,
-                                            skip_len=skip_len)
+            skip_len = self.adaptive_span.compute_skip_len()
+            key, value, key_pe = self.adaptive_span.crop(key=key,
+                                                         value=value,
+                                                         key_pe=key_pe,
+                                                         skip_len=skip_len)
 
         # compute attention from context
         # B x M (dest) x (M+L) (src)
         attn_cont = torch.matmul(query, key.transpose(-1, -2))
-        attn_cont = unskew(attn_cont)  # B x M x L
+        attn_cont = _unskew(attn_cont)  # B x M x L
 
         # compute the effect of position embedding
         attn_pos = torch.matmul(query, key_pe)  # B x M x L_pos
@@ -82,7 +107,7 @@ class SeqAttention(nn.Module):
             attn = self.adaptive_span(attn=attn, skip_len=skip_len)
         attn = self.dropout(attn)  # B x M X L_pos
 
-        attn_cont = skew(attn, 0)  # B x M X (L+M)
+        attn_cont = _skew(attn, 0)  # B x M X (L+M)
         out = torch.matmul(attn_cont, value)  # B x M x H
 
         return out
@@ -221,8 +246,7 @@ class TransformerSeq(nn.Module):
         h = self.in_emb(x)  # B x M x H
         h_cache = []
         for l, layer in enumerate(self.layers):
-            cache_size = attn_span.get_cache_size(layer.attn.attn)
-            cache_size = layer.attn.attn.get_cache_size()
+            cache_size = layer.attn.attn.adaptive_span.get_cache_size()
             if cache_size > self.block_size:
                 h_cache_l = torch.cat(
                     [h_prev[l][:, -cache_size + self.block_size:, :], h],

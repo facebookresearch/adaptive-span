@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 # command-line arguments with their default values
 
 PARAMS_CONFIG = {
@@ -98,7 +97,7 @@ PARAMS_CONFIG = {
             'help': 'length of the attention span',
             'dest': 'attn_span_lim'
         },
-        # TODO: why condition attn_span_loss while there is attn_span_enabled?
+        # TODO: why condition attn_span_loss while there is attn_span_enabled? => change
         '--attn-span': {
             'action': 'store_true',
             'default': False,

@@ -5,12 +5,16 @@ import os
 import torch
 
 
+##############################################################################
+# CHECKPOINT
+##############################################################################
+
 def _load_checkpoint(checkpoint_path,
                      model,
                      optimizer,
                      scheduler,
                      logger,
-                     distributed) -> int:
+                     distributed):
     print('loading from ' + checkpoint_path)
     if distributed:
         # the model is saved from gpu0 so we need to map it to CPU first
@@ -32,7 +36,7 @@ def load_checkpoint(checkpoint_path,
                     optimizer,
                     scheduler,
                     logger,
-                    distributed) -> int:
+                    distributed):
     if checkpoint_path and os.path.exists(checkpoint_path):
         return _load_checkpoint(checkpoint_path=checkpoint_path,
                                 model=model,
@@ -41,6 +45,10 @@ def load_checkpoint(checkpoint_path,
                                 logger=logger,
                                 distributed=distributed)
     return 0
+
+
+def is_checkpoint(iter_no, checkpoint_freq):
+    return checkpoint_freq > 0 and (iter_no + 1) % checkpoint_freq == 0
 
 
 def save_checkpoint(checkpoint_path,
@@ -58,3 +66,53 @@ def save_checkpoint(checkpoint_path,
         if scheduler is not None:
             checkpoint_state['scheduler_iter'] = scheduler.last_epoch
         torch.save(checkpoint_state, checkpoint_path)
+
+
+##############################################################################
+# LOGGER
+##############################################################################
+
+class Logger:
+    def __init__(self):
+        self._state_dict = dict()
+
+    def load_state_dict(self, state_dict):
+        self._state_dict = state_dict
+
+    def state_dict(self):
+        return self._state_dict
+
+    def log(self, title, value):
+        if title not in self._state_dict:
+            self._state_dict[title] = []
+        self._state_dict[title].append(value)
+
+    def __contains__(self, title):
+        return title in self._state_dict
+
+    def get_data(self, title):
+        if title not in self:
+            raise KeyError(title)
+        return self._state_dict[title]
+
+
+##############################################################################
+# PLOTTER
+##############################################################################
+
+class Plotter:
+    def __init__(self, plot_enabled, plot_env, plot_host, *args, **kwargs):
+        self.plot_enabled = plot_enabled
+        self.plot_env = plot_env
+        if plot_enabled:
+            import visdom
+            self.vis = visdom.Visdom(
+                env=plot_env, server=plot_host)
+
+    def plot(self, title, Y, X=None):
+        if self.plot_enabled:
+            self.vis.line(X=X, Y=Y, win=title, opts={'title': title})
+
+    def save(self, save):
+        if self.plot_enabled:
+            self.vis.save([self.plot_env])
