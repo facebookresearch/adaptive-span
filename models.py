@@ -64,16 +64,16 @@ class SeqAttention(nn.Module):
         self.attn_span_loss = attn_span_loss
         self.block_size = block_size
         self.adaptive_span = AdaptiveSpan(
-            attn_span_lim=attn_span_lim,
-            attn_span_len=attn_span_len,
-            attn_span_init=attn_span_init,
-            nb_heads=nb_heads,
             attn_span_enabled=attn_span_enabled,
             attn_span_cache_enabled=attn_span_cache_enabled,
             dropout=dropout,
+            nb_heads=nb_heads,
             hidden_size=hidden_size,
+            attn_span_lim=attn_span_lim,
             attn_span_loss=attn_span_loss,
-            block_size=block_size)
+            block_size=block_size,
+            attn_span_len=attn_span_len,
+            attn_span_init=attn_span_init)
 
     def forward(self, query, key, value, key_pe):
         # B = query.size(0)

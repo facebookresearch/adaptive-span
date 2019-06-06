@@ -44,26 +44,19 @@ class AdaptiveMask(nn.Module):
         self.size_ratio.data.clamp_(0, 1)
 
 
-class AdaptiveSpan(AdaptiveMask):
+class AdaptiveSpan(nn.Module):
     """Adaptive attention span for Transformer"""
     def __init__(self,
                  attn_span_enabled,
                  attn_span_cache_enabled,
                  dropout,
-                 hidden_size,
                  nb_heads,
+                 hidden_size,
                  attn_span_lim,
                  attn_span_loss,
                  block_size,
                  attn_span_len,
-                 attn_span_init,
-                 *args, **kwargs):
-        AdaptiveMask.__init__(self,
-                              size=attn_span_lim,
-                              ramp_size=attn_span_len,
-                              init_ratio=attn_span_init,
-                              shape=(nb_heads, 1, 1),
-                              sum_normalize=True)
+                 attn_span_init):
         self.attn_span_enabled = attn_span_enabled
         self.attn_span_cache_enabled = attn_span_cache_enabled
         self.dropout = nn.Dropout(dropout)
@@ -72,11 +65,16 @@ class AdaptiveSpan(AdaptiveMask):
         self.attn_span_lim = attn_span_lim
         self.attn_span_loss = attn_span_loss
         self.block_size = block_size
+        self.mask = AdaptiveMask(size=attn_span_lim,
+                                 ramp_size=attn_span_len,
+                                 init_ratio=attn_span_init,
+                                 shape=(nb_heads, 1, 1),
+                                 sum_normalize=True)
 
     def compute_skip_len(self):
         """compute how long the attention span should be"""
         L = self.attn_span_lim
-        skip_len = min(L - 1, L - self.get_max_size())
+        skip_len = min(L - 1, L - self.mask.get_max_size())
         skip_len = math.floor(skip_len / 64) * 64  # for better memory caching
         return skip_len
 
@@ -107,7 +105,7 @@ class AdaptiveSpan(AdaptiveMask):
         B = attn.size(0)
         M = attn.size(1)
         attn = attn.reshape(B // self.nb_heads, self.nb_heads, M, -1)
-        attn = AdaptiveMask.forward(self, attn, skip_len)
+        attn = self.mask(attn, skip_len)
         attn = attn.view(B, M, -1)
         return attn
 
@@ -125,4 +123,4 @@ class AdaptiveSpan(AdaptiveMask):
     def compute_extra_loss(self):
         return (self.attn_span_loss *
                 self.attn_span_lim *
-                self.size_ratio.mean())
+                self.mask.size_ratio.mean())

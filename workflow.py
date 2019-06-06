@@ -287,8 +287,8 @@ def _log_iter(logger
 
     span_latest = []
     if attn_span_loss > 0:
-        for i, l in enumerate(model.module.layers):
-            span = l.attn.attn.span_mask.size_ratio.view(-1)
+        for layer in model.module.layers:
+            span = layer.attn.attn.adaptive_span.mask.size_ratio.view(-1)
             span_latest.append(span)
             # TODO: why this line?
             span = span.mean().item()
@@ -354,8 +354,8 @@ def _train_batch(model,
 
     if not test_only:
         if attn_span_loss > 0:
-            loss += sum(l.attn.attn.compute_extra_loss()
-                        for l in model.module.layers)
+            loss += sum(layer.attn.attn.adaptive_span.compute_extra_loss()
+                        for layer in model.module.layers)
 
         if scheduler is not None:
             scheduler.step()
@@ -365,8 +365,8 @@ def _train_batch(model,
         optimizer.step()
 
         if attn_span_loss > 0:
-            for l in model.module.layers:
-                l.attn.attn.clamp_param()
+            for layer in model.module.layers:
+                layer.attn.attn.adaptive_span.mask.clamp_param()
 
     return h_cache
 
@@ -492,9 +492,9 @@ def _train(device,
         [
             torch.zeros(
                 batch_size,
-                l.attn.attn.get_cache_size(),
+                layer.attn.attn.adaptive_span.get_cache_size(),
                 hidden_size).to(device, dtype=torch.float32)
-            for l in model.module.layers
+            for layer in model.module.layers
         ]
         for _ in range(3)
     ]
