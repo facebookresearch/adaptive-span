@@ -7,16 +7,28 @@
 - [ ] write readme
 - [ ] remove internal experiment files
 
-## Training
-
-## Testing
+### Training of a model
+A model can be trained
 ```bash
-python main.py $args --checkpoint $path/model.pt --load-only --full-test \
---batch-sz $bsz
+python main.py --data /path/to/data --checkpoint /path/to/checkpoint
+```
+Add `--plot` argument to plot training curves in Visdom.
+
+A model with adaptive span can be trained with:
+```
+python main.py --data /path/to/data --checkpoint /path/to/checkpoint --attn-span-loss 0.000002
 ```
 
-## Running experiments in the paper
+### Evaluation of a model
+After training, a model can be tested on the whole test data by adding `--full-test`:
+```bash
+python main.py [same arguments as training] --full-test --batch-sz 1
+```
+This will print the validation and test performances of the model.
+A larger batch size can be used, but it will slightly worsen the performance because more samples will lack valid cache.
 
+## Running experiments in the paper
+Scripts for running the experiments in the paper can be found in `experiments` folder.
 ### In internal Slurm (remove later)
 The following will launch an experiment in Slurm that should reach 1.01bpc on validation.
 ```bash

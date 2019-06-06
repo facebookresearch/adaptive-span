@@ -29,7 +29,6 @@ class AdaptiveMask(nn.Module):
         if skip_len > 0:
             mask = mask[:, :, skip_len:]
         x = x * mask
-        # TODO: move to AdaptiveSpan
         if self.sum_normalize:
             x = x / (x.sum(-1, keepdim=True) + 1e-8)  # normalize so sum is 1
         return x
