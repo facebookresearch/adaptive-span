@@ -198,12 +198,6 @@ PARAMS_CONFIG = {
                     '(0 means keep only the last)',
             'dest': 'checkpoint_freq'
         },
-        '--load-only': {
-            'action': 'store_true',
-            'default': False,
-            'help': 'do not save to checkpoint',
-            'dest': 'load_only'
-        },
         '--full-test': {
             'action': 'store_true',
             'default': False,

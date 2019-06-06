@@ -8,18 +8,15 @@ import torch.nn.functional as F
 
 from adaptive_span import AdaptiveSpan
 
-# B =  _sz
-# H = hidden_size
-# M = block_size
-# L = attn_span_lim
+# Size notations:
+# B = batch_sizez, H = hidden_size, M = block_sizz, L = attn_span_lim
 
 # each position will only attent to its previous L positions
-# (from the lower layer)
-# no self-attention: L positions doesn't include the current step
+# note that attention doesn't include the current step itself
 
 
-# shift every row 1 step to right
 def _skew(X, pad_value):
+    """shift every row 1 step to right"""
     # X = B x M x L
     B, M, L = X.size()
     X = F.pad(X, (0, M + 1), value=pad_value)  # B x M x (L+M+1)
@@ -30,6 +27,7 @@ def _skew(X, pad_value):
 
 
 def _unskew(X):
+    """reverse _skew operation"""
     # X = B x M x L+M
     B, M, L = X.size()
     L -= M
@@ -76,12 +74,8 @@ class SeqAttention(nn.Module):
             attn_span_init=attn_span_init)
 
     def forward(self, query, key, value, key_pe):
-        # B = query.size(0)
-        H = self.head_dim
-        # L = self.attn_span_lim
-        # M = self.block_size
-        # query = B x M x H
-        # key, value = B x (M+L) x H
+        # query size = B x M x H
+        # key, value sizes = B x (M+L) x H
 
         # compute attention span
         if self.attn_span_loss > 0:
@@ -100,7 +94,7 @@ class SeqAttention(nn.Module):
         attn_pos = torch.matmul(query, key_pe)  # B x M x L_pos
         attn = attn_cont + attn_pos
 
-        attn = attn / math.sqrt(H)  # B x M X L_pos
+        attn = attn / math.sqrt(self.head_dim)  # B x M X L_pos
         attn = F.softmax(attn, dim=-1)
 
         if self.attn_span_loss > 0:
@@ -141,9 +135,7 @@ class MultiHeadSeqAttention(nn.Module):
     def head_reshape(self, x):
         K = self.nb_heads
         D = self.head_dim
-        sz = x.size()
-        sz = sz[:-1] + (K, D)  # B x (M+L) x K x D
-        x = x.view(sz)  # B x (M+L) x K x D
+        x = x.view(x.size()[:-1] + (K, D))  # B x (M+L) x K x D
         x = x.transpose(1, 2).contiguous()  # B x K x (M+L) x D
         x = x.view(-1, x.size(-2), x.size(-1))  # B_K x (M+L) x D
         return x
@@ -181,8 +173,7 @@ class FeedForwardLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, h):
-        h1 = self.fc1(h)
-        h1 = F.relu(h1)
+        h1 = F.relu(self.fc1(h))
         h1 = self.dropout(h1)
         h2 = self.fc2(h1)
         return h2
@@ -204,11 +195,11 @@ class TransformerSeqLayer(nn.Module):
         self.norm1 = nn.LayerNorm(hidden_size)
         self.norm2 = nn.LayerNorm(hidden_size)
 
-    def forward(self, h, h_prev, key_pe):
+    def forward(self, h, h_cache, key_pe):
         # h = B x M x H
-        # h_prev = B x L x H
-        h_memory = torch.cat([h_prev, h], dim=1)  # B x (M+L) x H
-        attn_out = self.attn(h, h_memory, h_memory, key_pe)
+        # h_cache = B x L x H
+        h_all = torch.cat([h_cache, h], dim=1)  # B x (M+L) x H
+        attn_out = self.attn(h, h_all, h_all, key_pe)
         h = self.norm1(h + attn_out)  # B x M x H
         ff_out = self.ff(h)
         out = self.norm2(h + ff_out)  # B x M x H
@@ -227,7 +218,9 @@ class TransformerSeq(nn.Module):
                  attn_params,
                  *args, **kwargs):
         nn.Module.__init__(self)
+        # token embeddings
         self.in_emb = nn.Embedding(vocab_size, hidden_size)
+        self.out_emb = nn.Linear(hidden_size, vocab_size)
         self.key_pe = nn.Parameter(
             torch.randn(1, hidden_size // nb_heads, attn_span_lim))
 
@@ -238,24 +231,23 @@ class TransformerSeq(nn.Module):
                                 **{**model_params, **attn_params})
             for _ in range(nb_layers))
 
-        self.out_emb = nn.Linear(hidden_size, vocab_size)
         self.block_size = block_size
 
-    def forward(self, x, h_prev, target=None):
-        # x : B x M
+    def forward(self, x, h_cache):
+        # x size = B x M
         h = self.in_emb(x)  # B x M x H
-        h_cache = []
+        h_cache_next = []
         for l, layer in enumerate(self.layers):
             cache_size = layer.attn.attn.adaptive_span.get_cache_size()
             if cache_size > self.block_size:
-                h_cache_l = torch.cat(
-                    [h_prev[l][:, -cache_size + self.block_size:, :], h],
+                h_cache_next_l = torch.cat(
+                    [h_cache[l][:, -cache_size + self.block_size:, :], h],
                     dim=1).detach()
             else:
-                h_cache_l = h[:, -cache_size:, :].detach()
-            h_cache.append(h_cache_l)
-            h = layer(h, h_prev[l], self.key_pe)  # B x M x H
+                h_cache_next_l = h[:, -cache_size:, :].detach()
+            h_cache_next.append(h_cache_next_l)
+            h = layer(h, h_cache[l], self.key_pe)  # B x M x H
 
         out = F.log_softmax(self.out_emb(h), dim=-1)
 
-        return out, h_cache
+        return out, h_cache_next

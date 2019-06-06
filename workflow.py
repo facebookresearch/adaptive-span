@@ -277,12 +277,12 @@ def _log_iter(logger
               model):
     X = (iter_no + 1) * nb_batches
     # TODO: why log(2)
-    train_mp_bpc = stat_train['loss'] / math.log(2)
+    train_bpc = stat_train['loss'] / math.log(2)
     val_bpc = stat_val['loss'] / math.log(2)
     print('{}\ttrain: {:.2f}bpc\tval: {:.2f}bpc\tms/batch: {:.1f}'.format(
-        X, train_mp_bpc, val_bpc, elapsed))
+        X, train_bpc, val_bpc, elapsed))
     logger.log(title='X', value=X)
-    logger.log(title='train_mp_bpc', value=train_mp_bpc)
+    logger.log(title='train_bpc', value=train_bpc)
     logger.log(title='val_bpc', value=val_bpc)
 
     span_latest = []
@@ -299,9 +299,9 @@ def _log_iter(logger
 
 
 def _plot_iter(plotter, span_latest, logger):
-    plotter.plot(title='train_mp_bpc',
+    plotter.plot(title='train_bpc',
                  X=logger.get_data('X'),
-                 Y=logger.get_data('train_mp_bpc'))
+                 Y=logger.get_data('train_bpc'))
     plotter.plot(title='val_bpc',
                  X=logger.get_data('X'),
                  Y=logger.get_data('val_bpc'))
@@ -311,25 +311,23 @@ def _plot_iter(plotter, span_latest, logger):
     plotter.save()
 
 
-def _save_iter(load_only,
-               checkpoint_freq,
+def _save_iter(checkpoint_freq,
                checkpoint_path,
                iter_no,
                model,
                optimizer,
                scheduler,
                logger):
-    if not load_only:
-        actual_checkpoint_path = checkpoint_path
-        if is_checkpoint(iter_no, checkpoint_freq):
-            actual_checkpoint_path += f".{iter_no+1}"
-        save_checkpoint(
-            checkpoint_path=actual_checkpoint_path,
-            iter_no=iter_no,
-            model=model,
-            optimizer=optimizer,
-            logger=logger,
-            scheduler=scheduler)
+    actual_checkpoint_path = checkpoint_path
+    if is_checkpoint(iter_no, checkpoint_freq):
+        actual_checkpoint_path += f".{iter_no+1}"
+    save_checkpoint(
+        checkpoint_path=actual_checkpoint_path,
+        iter_no=iter_no,
+        model=model,
+        optimizer=optimizer,
+        logger=logger,
+        scheduler=scheduler)
 
 
 # separating batch training reduces memory usage (removes overlap?)
@@ -347,7 +345,7 @@ def _train_batch(model,
     X = data[:, offset: offset + block_size].contiguous()
     Y = data[:, offset + 1: offset + block_size + 1].contiguous()
 
-    out, h_cache = model(X, h_cache, Y)
+    out, h_cache = model(X, h_cache)
     out = out.view(-1, out.size(-1))
     loss = F.nll_loss(out, Y.view(-1))
     stat['loss'] = stat.get('loss', 0) + loss.item()
@@ -384,67 +382,45 @@ def _train_single_iteration(model,
                             train_pos=-1,
                             h_cache=None):
     stat = dict()
-    # TODO: clean-up full_test, test_only, test_mode, attn_span_loss > 0, etc
+
     if test_only:
         model.eval()
     else:
         model.train()
 
     nb_batches_max = nb_batches
-    pos_shift_len = block_size
     if test_only:
         if full_test:
-            assert train_pos == 0
-            nb_batches_max = data.size(1)
-            for h in h_cache:
-                h.fill_(0)
+            nb_batches_max = math.ceil(data.size(1) / block_size)
         else:
-            # reduce test batches for speed-up
+            # test on fewer batches for speed-up
             nb_batches_max = max(1, nb_batches // 10)
             nb_batches_max = min(nb_batches_max,
-                                 math.ceil(data.size(1) / pos_shift_len))
+                                 math.ceil(data.size(1) / block_size))
 
-    # TODO: where is test_mode defined?
-    if args.test_mode:
-        from tqdm import tqdm
-        pbar = tqdm(total=data.size(1))
-
-    pos_max = data.size(1) - block_size
-    nbatches = 0
-    for batch_ind in range(nb_batches_max):
-        if train_pos >= 0:
-            offset = train_pos
-        else:
-            offset = random.randrange(pos_max)
-        # TODO: where is test_mode defined?
-        if args.test_mode:
-            pbar.update(pos_shift_len)
-
-        nbatches += 1
+    actual_nb_batches = 0
+    for _ in range(nb_batches_max):
+        actual_nb_batches += 1
         h_cache = _train_batch(
             model=model, optimizer=optimizer,
-            scheduler=scheduler, data=data, offset=offset,
+            scheduler=scheduler, data=data, offset=train_pos,
             stat=stat, attn_span_lim=attn_span_lim,
             attn_span_loss=attn_span_loss,
             test_only=test_only, h_cache=h_cache)
+        train_pos += block_size
+        if train_pos >= data.size(1) - block_size:
+            # data position reached the end
+            if full_test:
+                # only test once
+                break
+            # randomize offset to reduce overfitting
+            train_pos = random.randrange(block_size)
+            # reset the cache
+            for h in h_cache:
+                h.fill_(0)
 
-        if train_pos >= 0:
-            train_pos += pos_shift_len
-            if train_pos >= pos_max:
-                if full_test:
-                    train_pos = 0
-                    # only test once
-                    break
-                # randomize offset to reduce overfitting
-                train_pos = random.randrange(block_size)
-                for h in h_cache:
-                    h.fill_(0)
-
-    # TODO: where is test_mode defined?
-    if args.test_mode:
-        pbar.close()
     for k, v in stat.items():
-        stat[k] = v / nbatches
+        stat[k] = v / actual_nb_batches
     return stat, train_pos, h_cache
 
 
@@ -457,7 +433,6 @@ def _train(device,
            test_data,
            checkpoint_path,
            checkpoint_freq,
-           load_only,
            batch_size,
            hidden_size,
            full_test,
@@ -526,7 +501,7 @@ def _train(device,
             optimizer=optimizer, scheduler=scheduler, data=train_data,
             attn_span_lim=attn_span_lim, attn_span_loss=attn_span_loss,
             train_pos=pos[0], h_cache=hid[0])
-        elapsed = 1000 * (time.time() - t_sta) / nbatches
+        elapsed = 1000 * (time.time() - t_sta) / nb_batches
         with torch.no_grad():
             stat_val, pos[1], hid[1] = _train_single_iteration(
                 model=model,
@@ -555,8 +530,7 @@ def _train(device,
                                 attn_span_los=attn_span_loss,
                                 model=model)
         _plot_iter(logger=logger, span_latest=span_latest, plotter=plotter)
-        _save_iter(load_only=load_only,
-                   checkpoint_freq=checkpoint_freq,
+        _save_iter(checkpoint_freq=checkpoint_freq,
                    checkpoint_path=actual_checkpoint_path,
                    iter_no=iter_no,
                    model=model,

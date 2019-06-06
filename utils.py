@@ -27,6 +27,7 @@ def _load_checkpoint(checkpoint_path,
     optimizer.load_state_dict(checkpoint_state['optimizer'])
     logger.load_state_dict(checkpoint_state['logger'])
     if 'scheduler_iter' in checkpoint_state:
+        # # we only need the step count
         scheduler.step(checkpoint_state['scheduler_iter'])
     return iter_init
 
