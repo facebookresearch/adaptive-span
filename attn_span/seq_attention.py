@@ -19,7 +19,7 @@ class SeqAttention(nn.Module):
                  dropout,
                  hidden_size,
                  nb_heads,
-                 attn_lim,
+                 attn_span_lim,
                  attn_span_loss,
                  block_size,
                  attn_span_len,
@@ -31,10 +31,10 @@ class SeqAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.nb_heads = nb_heads
         self.head_dim = hidden_size // nb_heads
-        self.attn_lim = attn_lim
+        self.attn_span_lim = attn_span_lim
         self.attn_span_loss = attn_span_loss
         self.block_size = block_size
-        self.span_mask = AdaptiveMask(size=attn_lim,
+        self.span_mask = AdaptiveMask(size=attn_span_lim,
                                       ramp_size=attn_span_len,
                                       init_ratio=attn_span_init,
                                       shape=(nb_heads, 1, 1),
@@ -43,7 +43,7 @@ class SeqAttention(nn.Module):
     def forward(self, query, key, value, key_pe):
         # B = query.size(0)
         H = self.head_dim
-        # L = self.attn_lim
+        # L = self.attn_span_lim
         # M = self.block_size
         # query = B x M x H
         # key, value = B x (M+L) x H
@@ -79,7 +79,7 @@ class SeqAttention(nn.Module):
 
     def _compute_skip_len(self):
         """compute how long the attention span should be"""
-        L = self.attn_lim
+        L = self.attn_span_lim
         skip_len = min(L - 1, L - self.span_mask.get_max_size())
         skip_len = math.floor(skip_len / 64) * 64  # for better memory caching
         return skip_len
@@ -89,7 +89,7 @@ class SeqAttention(nn.Module):
         if skip_len is None:
             skip_len = self._compute_skip_len()
         cache_size = key.size(1) - self.block_size
-        skip_len2 = skip_len - (self.attn_lim - cache_size)
+        skip_len2 = skip_len - (self.attn_span_lim - cache_size)
         if skip_len2 > 0:
             key = key[:, skip_len2:, :]
             value = value[:, skip_len2:, :]
@@ -121,32 +121,15 @@ class SeqAttention(nn.Module):
             skip_len = self.attn_span_compute_skip_len()
             # give a buffer of 64 steps
             if skip_len > 64:
-                return self.attn_lim - skip_len + 64
-            return self.attn_lim,
+                return self.attn_span_lim - skip_len + 64
+            return self.attn_span_lim,
         else:
-            return self.attn_lim
+            return self.attn_span_lim
 
     def compute_extra_loss(self):
         return (self.attn_span_loss *
-                self.attn_lim *
+                self.attn_span_lim *
                 self.span_mask.size_ratio.mean())
 
     def clamp_param(self):
         self.span_mask.size_ratio.data.clamp_(0, 1)
-
-
-# TODO: the next functions are not specific to AttnSpanMixin...
-
-
-# TODO: plot enabled should be in the plotter object not in plot
-def plot(plot_enabled, model, plotter, stat_train):
-    x = []
-    for i, l in enumerate(model.module.layers):
-        span = l.attn.attn.span_mask.size_ratio.view(-1)
-        x.append(span)
-        span = span.mean().item()
-    x = torch.cat(x, dim=0)
-    plotter.log('span_avg', x.mean().item())
-    plotter.log('span_max', x.max().item())
-    if plot_enabled:
-        plotter.vis.line(x, win='span_latest', opts={'title': 'span_latest'})

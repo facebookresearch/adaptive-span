@@ -79,7 +79,6 @@ def _get_train_val_test_data(corpus,
                              rank: int,
                              *args,
                              **kwargs):
-    # TODO: slice not compatible with tensor
     slice_data = slice(
         batch_size * rank,
         batch_size * (rank + 1))

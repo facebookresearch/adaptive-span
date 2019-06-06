@@ -36,7 +36,7 @@ PARAMS_CONFIG = {
         '--local-rank': {
             'type': int,
             'default': 0,
-            'help': '',
+            'help': 'used in distributed training',
             'dest': 'local_rank'
         },
     },
@@ -44,9 +44,9 @@ PARAMS_CONFIG = {
     'data_params': {
         '--data': {
             'type': str,
-            'default': 0.03,
-            # TODO: REMOVE DEFAULT!!!
-            'help': '/privfate/home/sainbar/data/pennchar',
+            'default': '',
+            'help': 'data location '
+                    '(must contain train.txt, valid.txt and test.txt)',
             'dest': 'data_path'
         },
     },
@@ -70,12 +70,6 @@ PARAMS_CONFIG = {
             'help': 'number of layers',
             'dest': 'nb_layers'
         },
-        '--attn-lim': {
-            'type': int,
-            'default': 32,
-            'help': 'limit attention span',
-            'dest': 'attn_lim'
-        },
         '--block-sz': {
             'type': int,
             'default': 64,
@@ -98,6 +92,12 @@ PARAMS_CONFIG = {
     },
     # attention-span-specific - refinement on model-specific params
     'attn_span_params': {
+        '--attn-span-lim': {
+            'type': int,
+            'default': 32,
+            'help': 'length of the attention span',
+            'dest': 'attn_span_lim'
+        },
         # TODO: why condition attn_span_loss while there is attn_span_enabled?
         '--attn-span': {
             'action': 'store_true',
@@ -171,7 +171,8 @@ PARAMS_CONFIG = {
         '--lr-warmup': {
             'type': int,
             'default': 0,
-            'help': 'linearly increase LR from 0 during K updates',
+            'help': 'linearly increase LR from 0 '
+                    'during first lr_warmup updates',
             'dest': 'lr_warmup'
         },
         '--grad-clip': {
@@ -182,15 +183,37 @@ PARAMS_CONFIG = {
                     'value',
             'dest': 'grad_clip'
         },
-        '--wdecay': {
-            'type': float,
+    },
+    # trainer-specific
+    'trainer_params': {
+        '--checkpoint': {
+            'type': str,
+            'default': '',
+            'help': 'path to save/load model',
+            'dest': 'checkpoint_path'
+        },
+        '--checkpoint-freq': {
+            'type': int,
             'default': 0,
-            'help': 'weight decay',
-            'dest': 'weight_decay'
+            'help': 'keep a copy of model every checkpoint_freq iterations '
+                    '(0 means keep only the last)',
+            'dest': 'checkpoint_freq'
+        },
+        '--load-only': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'do not save to checkpoint',
+            'dest': 'load_only'
+        },
+        '--full-test': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'do testing on whole validation and test data',
+            'dest': 'full_test'
         },
     },
-    # plot-specific
-    'plot_params': {
+    # plotter-specific
+    'plotter_params': {
         '--plot': {
             'action': 'store_true',
             'default': False,
@@ -208,33 +231,6 @@ PARAMS_CONFIG = {
             'default': 'http://localhost',
             'help': 'visdom host name',
             'dest': 'plot_host'
-        },
-    },
-    # trainer-specific
-    'trainer_params': {
-        '--checkpoint': {
-            'type': str,
-            'default': '',
-            'help': 'path to save/load model',
-            'dest': 'checkpoint_path'
-        },
-        '--checkpoint-freq': {
-            'type': int,
-            'default': 0,
-            'help': 'how often to keep a copy, in nb of iterations',
-            'dest': 'checkpoint_freq'
-        },
-        '--load-only': {
-            'action': 'store_true',
-            'default': False,
-            'help': 'do not save to checkpoint',
-            'dest': 'load_only'
-        },
-        '--full-test': {
-            'action': 'store_true',
-            'default': False,
-            'help': 'do testing on whole validation and test data',
-            'dest': 'full_test'
         },
     },
 }

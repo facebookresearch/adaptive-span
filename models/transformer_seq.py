@@ -12,7 +12,7 @@ from attn_span.seq_attention import SeqAttention
 # B =  _sz
 # H = hidden_size
 # M = block_size
-# L = attn_lim
+# L = attn_span_lim
 
 # each position will only attent to its previous L positions
 # (from the lower layer)
@@ -127,7 +127,7 @@ class TransformerSeq(nn.Module):
                  hidden_size,
                  nb_heads,
                  nb_layers,
-                 attn_lim,
+                 attn_span_lim,
                  block_size,
                  model_params,
                  attn_params,
@@ -135,10 +135,10 @@ class TransformerSeq(nn.Module):
         nn.Module.__init__(self)
         self.in_emb = nn.Embedding(vocab_size, hidden_size)
         self.key_pe = nn.Parameter(
-            torch.randn(1, hidden_size // nb_heads, attn_lim))
+            torch.randn(1, hidden_size // nb_heads, attn_span_lim))
 
-        # TODO: check if nn.ModuleList() accept .extend
-        self.layers = nn.ModuleList().extend(
+        self.layers = nn.ModuleList()
+        self.layers.extend(
             TransformerSeqLayer(model_params=model_params,
                                 attn_params=attn_params,
                                 **{**model_params, **attn_params})

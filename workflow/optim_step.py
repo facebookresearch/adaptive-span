@@ -3,7 +3,7 @@
 import torch.optim as optim
 
 # TODO: review import statements
-from utils.adagrad import Adagrad
+from utils.adagrad_with_grad_clip import AdagradWithGradClip
 
 
 def _get_grad_requiring_params(model):
@@ -20,7 +20,6 @@ def _get_grad_requiring_params(model):
 def _get_optimizer(model,
                    optim,
                    lr: float,
-                   weight_decay: float,
                    momentum: float,
                    grad_clip: float,
                    *args,
@@ -28,13 +27,11 @@ def _get_optimizer(model,
     if optim == 'sgd':
         return optim.SGD(_get_grad_requiring_params(model),
                          lr=lr,
-                         weight_decay=weight_decay,
                          momentum=momentum)
     elif optim == 'adagrad':
-        return Adagrad(_get_grad_requiring_params(model),
-                       lr=lr,
-                       weight_decay=weight_decay,
-                       grad_clip=grad_clip)
+        return AdagradWithGradClip(_get_grad_requiring_params(model),
+                                   lr=lr,
+                                   grad_clip=grad_clip)
     else:
         raise RuntimeError("wrong type of optimizer "
                            "- must be 'sgd' or 'adagrad")
