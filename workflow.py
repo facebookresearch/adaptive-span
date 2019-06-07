@@ -16,9 +16,6 @@ from utils import (
     Logger,
     Plotter)
 
-# TODO: remove
-import submitit
-
 
 ##############################################################################
 # ENVIRONMENT
@@ -33,6 +30,8 @@ def _torch_distributed_init_process_group(distributed,
     rank, world_size = 0, 1
     if distributed:
         if submitit_enabled:
+            # remove
+            import submitit
             job_env = submitit.JobEnvironment()
             rank = job_env.global_rank
             world_size = job_env.num_tasks
@@ -267,7 +266,7 @@ def get_optimizer_and_scheduler(model, optim_params):
 # TRAINER
 ##############################################################################
 
-def _log_iter(logger
+def _log_iter(logger,
               iter_no,
               nb_batches,
               stat_train,

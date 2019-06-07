@@ -46,7 +46,7 @@ def launch(env_params,
            **kwargs):
     # ENVIRONMENT
     set_up_env(env_params)
-    get_device(env_params)
+    device = get_device(env_params)
 
     # DATA
     train_data, val_data, test_data = get_train_val_test_data(
@@ -72,7 +72,6 @@ def launch(env_params,
           env_params=env_params,
           model_params=model_params,
           attn_span_params=attn_span_params,
-          plotter_params=attn_span_params,
           optim_params=optim_params,
           plotter_params=plotter_params,
           device=device,

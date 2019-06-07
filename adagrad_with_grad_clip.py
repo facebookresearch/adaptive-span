@@ -2,7 +2,7 @@
 
 # TODO: add licence or subclass adagrad from pytorch
 
-from torch.optim.optimizer import Adagrad
+from torch.optim import Adagrad
 
 
 def _clip_grad(clr, grad, group_grad_clip):
