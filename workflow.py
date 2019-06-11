@@ -148,7 +148,7 @@ def _batchify(data_tensor, batch_size):
     return data_tensor
 
 
-def _build_corpus(data_path, *args, **kwargs):
+def _build_corpus(data_path):
     corpus_path = os.path.join(data_path, 'corpus.pt')
     if os.path.exists(corpus_path):
         corpus = torch.load(corpus_path)
@@ -161,9 +161,7 @@ def _build_corpus(data_path, *args, **kwargs):
 def _get_train_val_test_data(corpus,
                              batch_size,
                              device,
-                             rank,
-                             *args,
-                             **kwargs):
+                             rank):
     slice_data = slice(
         batch_size * rank,
         batch_size * (rank + 1))
@@ -178,8 +176,7 @@ def get_train_val_test_data(data_params, env_params, device):
     corpus = _build_corpus(**data_params)
     data_params['vocab_size'] = corpus.vocab_size
     return _get_train_val_test_data(
-        corpus=corpus, device=device,
-        **{**env_params, **data_params})
+        corpus=corpus, device=device, rank=env_params['rank'])
 
 
 def get_vocab_size(data_params):
@@ -195,9 +192,7 @@ def _get_model(device,
                model_params,
                attn_params,
                local_rank,
-               distributed,
-               *args,
-               **kwargs):
+               distributed):
     model = TransformerSeq(
         vocab_size=vocab_size,
         model_params=model_params,
@@ -218,7 +213,8 @@ def get_model(model_params, attn_params, env_params, device, vocab_size):
                       vocab_size=vocab_size,
                       model_params=model_params,
                       attn_params=attn_params,
-                      **env_params)
+                      local_rank=env_params['local_rank'],
+                      distributed=env_params['distributed'])
 
 
 ##############################################################################
@@ -240,9 +236,7 @@ def _get_optimizer(model,
                    optim,
                    lr: float,
                    momentum: float,
-                   grad_clip: float,
-                   *args,
-                   **kwargs):
+                   grad_clip: float):
     if optim == 'sgd':
         return torch.optim.SGD(_get_grad_requiring_params(model),
                                lr=lr,
@@ -256,7 +250,7 @@ def _get_optimizer(model,
                            "- must be 'sgd' or 'adagrad")
 
 
-def _get_scheduler(optimizer, lr_warmup: int, *args, **kwargs):
+def _get_scheduler(optimizer, lr_warmup):
     if lr_warmup > 0:
         return torch.optim.lr_scheduler.LambdaLR(
             optimizer, lambda ep: min(1, ep / lr_warmup))
@@ -268,8 +262,13 @@ def update_optim_params(optim_params, env_params):
 
 
 def get_optimizer_and_scheduler(model, optim_params):
-    optimizer = _get_optimizer(model=model, **optim_params)
-    scheduler = _get_scheduler(optimizer=optimizer, **optim_params)
+    optimizer = _get_optimizer(model=model,
+                               optim=optim_params['optim'],
+                               lr=optim_params['lr'],
+                               momentum=optim_params['momentum'],
+                               grad_clip=optim_params['grad_clip'])
+    scheduler = _get_scheduler(optimizer=optimizer,
+                               lr_warmup=optim_params['lr_warmup'])
     return optimizer, scheduler
 
 
@@ -443,19 +442,18 @@ def _train(device,
            test_data,
            checkpoint_path,
            checkpoint_freq,
-           batch_size,
-           hidden_size,
            full_test,
-           nb_iter,
            distributed,
            world_size,
+           hidden_size,
+           batch_size,
            nb_batches,
+           nb_iter,
            attn_span_lim,
            attn_span_loss,
            plot_enabled,
            plot_env,
-           plot_host,
-           *args, **kwargs):
+           plot_host):
     # create logger and plotter
     logger = Logger()
     plotter = Plotter(
@@ -569,9 +567,17 @@ def train(trainer_params,
            train_data=train_data,
            val_data=val_data,
            test_data=test_data,
-           **{**env_params,
-              **model_params,
-              **attn_span_params,
-              **optim_params,
-              **trainer_params,
-              **plotter_params})
+           checkpoint_path=trainer_params['checkpoint_path'],
+           checkpoint_freq=trainer_params['checkpoint_freq'],
+           full_test=trainer_params['full_test'],
+           distributed=env_params['distributed'],
+           world_size=env_params['world_size'],
+           hidden_size=model_params['hidden_size'],
+           batch_size=optim_params['batch_size'],
+           nb_batches=optim_params['nb_batches'],
+           nb_iter=optim_params['nb_iter'],
+           attn_span_lim=attn_span_params['attn_span_lim'],
+           attn_span_loss=attn_span_params['attn_span_loss'],
+           plot_enabled=plotter_params['plot_enabled'],
+           plot_env=plotter_params['plot_env'],
+           plot_host=plotter_params['plot_host'])
