@@ -473,7 +473,7 @@ def _train(device,
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
-        plotter=plotter,
+        logger=logger,
         distributed=distributed)
 
     # hid == cache init
