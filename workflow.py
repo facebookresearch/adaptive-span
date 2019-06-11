@@ -199,7 +199,7 @@ def _get_model(device,
                attn_span_params):
     model = TransformerSeq(
         vocab_size=vocab_size,
-        hidden_size=model_params['model_params'],
+        hidden_size=model_params['hidden_size'],
         nb_heads=model_params['nb_heads'],
         nb_layers=model_params['nb_layers'],
         attn_span_lim=attn_span_params['attn_span_lim'],
