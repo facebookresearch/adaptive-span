@@ -50,7 +50,10 @@ def launch(env_params,
 
     # DATA
     train_data, val_data, test_data = get_train_val_test_data(
-        data_params=data_params, env_params=env_params, device=device)
+      data_params=data_params,
+      env_params=env_params, 
+      optim_params=optim_params,
+      device=device)
     breakpoint()
     vocab_size = get_vocab_size(data_params)
     breakpoint()
