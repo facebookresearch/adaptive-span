@@ -419,11 +419,17 @@ def _train_single_iteration(model,
     for _ in range(nb_batches_max):
         actual_nb_batches += 1
         h_cache = _train_batch(
-            model=model, optimizer=optimizer,
-            scheduler=scheduler, data=data, offset=train_pos,
-            stat=stat, attn_span_lim=attn_span_lim,
+            model=model,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            data=data,
+            offset=train_pos,
+            stat=stat,
+            attn_span_lim=attn_span_lim,
             attn_span_loss=attn_span_loss,
-            test_only=test_only, h_cache=h_cache)
+            block_size=block_size,
+            test_only=test_only,
+            h_cache=h_cache)
         train_pos += block_size
         if train_pos >= data.size(1) - block_size:
             # data position reached the end
