@@ -91,6 +91,10 @@ class Logger:
     def __contains__(self, title):
         return title in self._state_dict
 
+    def __iter__(self):
+        for title in self._state_dict:
+            yield title
+
     def get_data(self, title):
         if title not in self:
             raise KeyError(title)

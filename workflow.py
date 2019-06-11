@@ -318,12 +318,11 @@ def _log_iter(logger,
 
 
 def _plot_iter(plotter, span_latest, logger):
-    plotter.plot(title='train_bpc',
-                 X=logger.get_data('X'),
-                 Y=logger.get_data('train_bpc'))
-    plotter.plot(title='val_bpc',
-                 X=logger.get_data('X'),
-                 Y=logger.get_data('val_bpc'))
+    for title in logger:
+        if title != 'X':
+            plotter.plot(title='train_bpc',
+                         X=logger.get_data('X'),
+                         Y=logger.get_data('title'))
     if span_latest is not None:
         plotter.plot(title='span_latest',
                      Y=span_latest)
