@@ -63,7 +63,11 @@ def _get_device(cuda_enabled):
 
 def set_up_env(env_params):
     env_params.update(
-        _torch_distributed_init_process_group(**env_params))
+        _torch_distributed_init_process_group(
+            distributed=env_params['distributed'],
+            submitit_enabled=env_params['submitit_enabled'],
+            dist_init=env_params['dist_init'],
+            local_rank=env_params['local_rank']))
     env_params['device'] = _get_device(
         cuda_enabled=not env_params['no_cuda'])
 
