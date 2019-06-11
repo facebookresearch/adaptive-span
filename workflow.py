@@ -499,7 +499,7 @@ def _train(device,
 
     if full_test:
         with torch.no_grad():
-            stat_test, pos[1], hid[1] = _train_single_iteration(
+            stat_val, pos[1], hid[1] = _train_single_iteration(
                 model=model,
                 optimizer=optimizer,
                 scheduler=scheduler,
@@ -536,7 +536,7 @@ def _train(device,
         t_sta = time.time()
         # here the loss includes auxilary losses such as multi-position
         # training
-        stat_test, pos[0], hid[0] = _train_single_iteration(
+        stat_train, pos[0], hid[0] = _train_single_iteration(
             model=model,
             optimizer=optimizer,
             scheduler=scheduler,
@@ -551,7 +551,7 @@ def _train(device,
             h_cache=hid[0])
         elapsed = 1000 * (time.time() - t_sta) / nb_batches
         with torch.no_grad():
-            stat_test, pos[1], hid[1] = _train_single_iteration(
+            stat_val, pos[1], hid[1] = _train_single_iteration(
                 model=model,
                 optimizer=optimizer,
                 scheduler=scheduler,
