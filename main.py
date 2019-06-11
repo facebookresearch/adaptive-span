@@ -54,9 +54,7 @@ def launch(env_params,
       env_params=env_params, 
       optim_params=optim_params,
       device=device)
-    breakpoint()
     vocab_size = get_vocab_size(data_params)
-    breakpoint()
 
     # MODEL
     model = get_model(
@@ -65,14 +63,12 @@ def launch(env_params,
         env_params=env_params,
         device=device,
         vocab_size=vocab_size)
-    breakpoint()
 
     # OPTIMIZER AND SCHEDULER
     update_optim_params(
         optim_params=optim_params, env_params=env_params)
     optimizer, scheduler = get_optimizer_and_scheduler(
         model=model, optim_params=optim_params)
-    breakpoint()
 
     # train
     train(trainer_params=trainer_params,

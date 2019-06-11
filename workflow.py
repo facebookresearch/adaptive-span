@@ -583,7 +583,7 @@ def _train(device,
                                 stat_train=stat_train,
                                 stat_val=stat_val,
                                 elapsed=elapsed,
-                                attn_span_los=attn_span_loss,
+                                attn_span_loss=attn_span_loss,
                                 model=model)
         _plot_iter(logger=logger, span_latest=span_latest, plotter=plotter)
         _save_iter(checkpoint_freq=checkpoint_freq,
