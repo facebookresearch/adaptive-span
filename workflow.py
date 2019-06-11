@@ -474,7 +474,7 @@ def _train(device,
         optimizer=optimizer,
         scheduler=scheduler,
         plotter=plotter,
-        distributed=env_params['distributed'])
+        distributed=distributed)
 
     # hid == cache init
     # pos: 0 --> sequential /  -1 --> random
