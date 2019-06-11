@@ -56,6 +56,7 @@ class AdaptiveSpan(nn.Module):
                  block_size,
                  attn_span_len,
                  attn_span_init):
+        nn.Module.__init__(self)
         self.attn_span_enabled = attn_span_enabled
         self.attn_span_cache_enabled = attn_span_cache_enabled
         self.dropout = nn.Dropout(dropout)
