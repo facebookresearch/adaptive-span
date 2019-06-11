@@ -47,7 +47,6 @@ def launch(env_params,
     # ENVIRONMENT
     set_up_env(env_params)
     device = get_device(env_params)
-    breakpoint()
 
     # DATA
     train_data, val_data, test_data = get_train_val_test_data(
