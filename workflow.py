@@ -325,7 +325,7 @@ def _plot_iter(plotter, span_latest, logger):
                  Y=logger.get_data('val_bpc'))
     if span_latest is not None:
         plotter.plot(title='span_latest',
-                     Y=logger.get_data('span_latest'))
+                     Y=span_latest)
     plotter.save()
 
 
