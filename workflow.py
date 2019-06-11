@@ -103,7 +103,6 @@ def _tokenize(text_path, dictionary_to_update):
     current_token_no = 0
     with open(text_path, 'r', encoding="utf8") as f:
         for line in f:
-            print(line)
             tokens = line.split() + ['<eos>']
             for token in tokens:
                 ids[current_token_no] = dictionary_to_update[token]
