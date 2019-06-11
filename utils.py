@@ -114,6 +114,6 @@ class Plotter:
         if self.plot_enabled:
             self.vis.line(X=X, Y=Y, win=title, opts={'title': title})
 
-    def save(self, save):
+    def save(self):
         if self.plot_enabled:
             self.vis.save([self.plot_env])
