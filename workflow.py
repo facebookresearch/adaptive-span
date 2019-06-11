@@ -453,7 +453,6 @@ def _train(device,
            full_test,
            distributed,
            world_size,
-           block_size,
            hidden_size,
            batch_size,
            nb_batches,
@@ -493,11 +492,19 @@ def _train(device,
 
     if full_test:
         with torch.no_grad():
-            stat_val, pos[1], hid[1] = _train_single_iteration(
+            stat_test, pos[1], hid[1] = _train_single_iteration(
                 model=model,
-                optimizer=optimizer, scheduler=scheduler, data=val_data,
-                attn_span_lim=attn_span_lim, attn_span_loss=attn_span_loss,
-                test_only=True, train_pos=pos[1], h_cache=hid[1])
+                optimizer=optimizer,
+                scheduler=scheduler,
+                data=val_data,
+                nb_batches=nb_batches,
+                full_test=full_test,
+                attn_span_lim=attn_span_lim,
+                attn_span_loss=attn_span_loss,
+                block_size=block_size,
+                test_only=True,
+                train_pos=pos[1],
+                h_cache=hid[1])
             # TODO: replace print by logger
             print('val: {:.3f}bpc'.format(stat_val['loss'] / math.log(2)))
 
@@ -514,7 +521,6 @@ def _train(device,
                 test_only=True,
                 train_pos=pos[2],
                 h_cache=hid[2])
-
             # TODO: replace print by logger
             print('test: {:.3f}bpc'.format(stat_test['loss'] / math.log(2)))
         return
@@ -523,18 +529,34 @@ def _train(device,
         t_sta = time.time()
         # here the loss includes auxilary losses such as multi-position
         # training
-        stat_train, pos[0], hid[0] = _train_single_iteration(
+        stat_test, pos[0], hid[0] = _train_single_iteration(
             model=model,
-            optimizer=optimizer, scheduler=scheduler, data=train_data,
-            attn_span_lim=attn_span_lim, attn_span_loss=attn_span_loss,
-            train_pos=pos[0], h_cache=hid[0])
+            optimizer=optimizer,
+            scheduler=scheduler,
+            data=train_data,
+            nb_batches=nb_batches,
+            full_test=full_test,
+            attn_span_lim=attn_span_lim,
+            attn_span_loss=attn_span_loss,
+            block_size=block_size,
+            test_only=True,
+            train_pos=pos[0],
+            h_cache=hid[0])
         elapsed = 1000 * (time.time() - t_sta) / nb_batches
         with torch.no_grad():
-            stat_val, pos[1], hid[1] = _train_single_iteration(
+            stat_test, pos[1], hid[1] = _train_single_iteration(
                 model=model,
-                optimizer=optimizer, scheduler=scheduler, data=val_data,
-                attn_span_lim=attn_span_lim, attn_span_loss=attn_span_loss,
-                test_only=True, train_pos=pos[1], h_cache=hid[1])
+                optimizer=optimizer,
+                scheduler=scheduler,
+                data=val_data,
+                nb_batches=nb_batches,
+                full_test=full_test,
+                attn_span_lim=attn_span_lim,
+                attn_span_loss=attn_span_loss,
+                block_size=block_size,
+                test_only=True,
+                train_pos=pos[1],
+                h_cache=hid[1])
 
         if distributed:
             X = torch.zeros(2).to(device)
@@ -592,7 +614,6 @@ def train(trainer_params,
            distributed=env_params['distributed'],
            world_size=env_params['world_size'],
            hidden_size=model_params['hidden_size'],
-           block_size=model_params['block_size'],
            batch_size=optim_params['batch_size'],
            nb_batches=optim_params['nb_batches'],
            nb_iter=optim_params['nb_iter'],
