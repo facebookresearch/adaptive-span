@@ -453,6 +453,7 @@ def _train(device,
            full_test,
            distributed,
            world_size,
+           block_size,
            hidden_size,
            batch_size,
            nb_batches,
@@ -502,8 +503,18 @@ def _train(device,
 
             stat_test, pos[2], hid[2] = _train_single_iteration(
                 model=model,
-                optimizer=optimizer, scheduler=scheduler, data=test_data,
-                test_only=True, train_pos=pos[2], h_cache=hid[2])
+                optimizer=optimizer,
+                scheduler=scheduler,
+                data=test_data,
+                nb_batches=nb_batches,
+                full_test=full_test,
+                attn_span_lim=attn_span_lim,
+                attn_span_loss=attn_span_loss,
+                block_size=block_size,
+                test_only=True,
+                train_pos=pos[2],
+                h_cache=hid[2])
+
             # TODO: replace print by logger
             print('test: {:.3f}bpc'.format(stat_test['loss'] / math.log(2)))
         return
@@ -581,6 +592,7 @@ def train(trainer_params,
            distributed=env_params['distributed'],
            world_size=env_params['world_size'],
            hidden_size=model_params['hidden_size'],
+           block_size=model_params['block_size'],
            batch_size=optim_params['batch_size'],
            nb_batches=optim_params['nb_batches'],
            nb_iter=optim_params['nb_iter'],
