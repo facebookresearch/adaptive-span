@@ -172,11 +172,13 @@ def _get_train_val_test_data(corpus,
     ]
 
 
-def get_train_val_test_data(data_params, env_params, device):
+def get_train_val_test_data(data_params, env_params, optim_params, device):
     corpus = _build_corpus(**data_params)
     data_params['vocab_size'] = corpus.vocab_size
-    return _get_train_val_test_data(
-        corpus=corpus, device=device, rank=env_params['rank'])
+    return _get_train_val_test_data(corpus=corpus,
+                                    device=device,
+                                    batch_size=optim_params['batch_size'],
+                                    rank=env_params['rank'])
 
 
 def get_vocab_size(data_params):
