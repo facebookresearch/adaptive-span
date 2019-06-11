@@ -102,12 +102,12 @@ def _tokenize(text_path, dictionary_to_update):
     # Assign to each token its identifier
     current_token_no = 0
     with open(text_path, 'r', encoding="utf8") as f:
+        old_percentage = -1
         for line in f:
             tokens = line.split() + ['<eos>']
             for token in tokens:
                 ids[current_token_no] = dictionary_to_update[token]
                 current_token_no += 1
-                old_percentage = -1
                 percentage = current_token_no // nb_tokens_in_text * 100
                 if percentage > old_percentage:
                     old_percentage = percentage
