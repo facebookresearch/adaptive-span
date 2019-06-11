@@ -107,7 +107,8 @@ def _tokenize(text_path, dictionary_to_update):
             for token in tokens:
                 ids[current_token_no] = dictionary_to_update[token]
                 current_token_no += 1
-                print(f'{current_token_no} / {nb_tokens_in_text} tokens')
+                print(f'{current_token_no // nb_tokens_in_text * 100} % {current_token_no} / {nb_tokens_in_text} tokens', end='\r')
+    print('')
     breakpoint()
 
     return ids
