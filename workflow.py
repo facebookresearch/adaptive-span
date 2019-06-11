@@ -94,6 +94,7 @@ def _tokenize(text_path, dictionary_to_update):
                 if token not in dictionary_to_update:
                     dictionary_to_update[token] = nb_tokens_in_dictionary
                     nb_tokens_in_dictionary += 1
+                    print(nb_tokens_in_dictionary, token)
 
     # Create tensor of size nb_tokens_in_text
     ids = torch.LongTensor(nb_tokens_in_text)
