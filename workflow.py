@@ -302,16 +302,17 @@ def _log_iter(logger,
     logger.log(title='train_bpc', value=train_bpc)
     logger.log(title='val_bpc', value=val_bpc)
 
+    if attn_span_loss <= 0:
+        return None
     span_latest = []
-    if attn_span_loss > 0:
-        for layer in model.module.layers:
-            span = layer.attn.attn.adaptive_span.mask.size_ratio.view(-1)
-            span_latest.append(span)
-            # TODO: why this line?
-            span = span.mean().item()
-        span_latest = torch.cat(span_latest, dim=0)
-        logger.log('span_avg', span_latest.mean().item())
-        logger.log('span_max', span_latest.max().item())
+    for layer in model.module.layers:
+        span = layer.attn.attn.adaptive_span.mask.size_ratio.view(-1)
+        span_latest.append(span)
+        # TODO: why this line?
+        span = span.mean().item()
+    span_latest = torch.cat(span_latest, dim=0)
+    logger.log('span_avg', span_latest.mean().item())
+    logger.log('span_max', span_latest.max().item())
     return span_latest
 
 
