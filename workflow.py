@@ -587,6 +587,7 @@ def _train(device,
                                 attn_span_loss=attn_span_loss,
                                 model=model)
         _plot_iter(logger=logger, span_latest=span_latest, plotter=plotter)
+        breakpoint()
         _save_iter(checkpoint_freq=checkpoint_freq,
                    checkpoint_path=checkpoint_path,
                    iter_no=iter_no,
