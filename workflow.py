@@ -24,9 +24,7 @@ from utils import (
 def _torch_distributed_init_process_group(distributed,
                                           submitit_enabled,
                                           dist_init,
-                                          local_rank,
-                                          *args,
-                                          **kwargs):
+                                          local_rank):
     rank, world_size = 0, 1
     if distributed:
         if submitit_enabled:
@@ -191,15 +189,19 @@ def get_vocab_size(data_params):
 
 def _get_model(device,
                vocab_size,
-               model_params,
-               attn_params,
                local_rank,
-               distributed):
+               distributed,
+               model_params,
+               attn_span_params):
     model = TransformerSeq(
         vocab_size=vocab_size,
+        hidden_size=model_params['model_params'],
+        nb_heads=model_params['nb_heads'],
+        nb_layers=model_params['nb_layers'],
+        attn_span_lim=attn_span_params['attn_span_lim'],
+        block_size=model_params['block_size'],
         model_params=model_params,
-        attn_params=attn_params,
-        **{**model_params, **attn_params})
+        attn_span_params=attn_span_params)
     if distributed:
         model = model.to(device, dtype=torch.float32)
         model = torch.nn.parallel.DistributedDataParallel(
@@ -210,11 +212,11 @@ def _get_model(device,
     return model
 
 
-def get_model(model_params, attn_params, env_params, device, vocab_size):
+def get_model(model_params, attn_span_params, env_params, device, vocab_size):
     return _get_model(device=device,
                       vocab_size=vocab_size,
                       model_params=model_params,
-                      attn_params=attn_params,
+                      attn_span_params=attn_span_params,
                       local_rank=env_params['local_rank'],
                       distributed=env_params['distributed'])
 
