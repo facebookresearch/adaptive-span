@@ -322,7 +322,7 @@ def _plot_iter(plotter, span_latest, logger):
         if title != 'X':
             plotter.plot(title='train_bpc',
                          X=logger.get_data('X'),
-                         Y=logger.get_data('title'))
+                         Y=logger.get_data(title))
     if span_latest is not None:
         plotter.plot(title='span_latest',
                      Y=span_latest)
