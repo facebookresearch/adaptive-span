@@ -364,7 +364,7 @@ def _train_batch(model,
 
     out, h_cache = model(X, h_cache)
     out = out.view(-1, out.size(-1))
-    loss = F.nll_loss(out, Y.view(-1))
+    loss = torch.nn.functional.nll_loss(out, Y.view(-1))
     stat['loss'] = stat.get('loss', 0) + loss.item()
 
     if not test_only:
