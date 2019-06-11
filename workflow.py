@@ -336,7 +336,7 @@ def _save_iter(checkpoint_freq,
                optimizer,
                scheduler,
                logger):
-    if checkpoint:
+    if checkpoint_path:
         actual_checkpoint_path = checkpoint_path
         if is_checkpoint(iter_no, checkpoint_freq):
             actual_checkpoint_path += f".{iter_no+1}"
