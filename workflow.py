@@ -336,16 +336,17 @@ def _save_iter(checkpoint_freq,
                optimizer,
                scheduler,
                logger):
-    actual_checkpoint_path = checkpoint_path
-    if is_checkpoint(iter_no, checkpoint_freq):
-        actual_checkpoint_path += f".{iter_no+1}"
-    save_checkpoint(
-        checkpoint_path=actual_checkpoint_path,
-        iter_no=iter_no,
-        model=model,
-        optimizer=optimizer,
-        logger=logger,
-        scheduler=scheduler)
+    if checkpoint:
+        actual_checkpoint_path = checkpoint_path
+        if is_checkpoint(iter_no, checkpoint_freq):
+            actual_checkpoint_path += f".{iter_no+1}"
+        save_checkpoint(
+            checkpoint_path=actual_checkpoint_path,
+            iter_no=iter_no,
+            model=model,
+            optimizer=optimizer,
+            logger=logger,
+            scheduler=scheduler)
 
 
 # separating batch training reduces memory usage (removes overlap?)
@@ -587,7 +588,6 @@ def _train(device,
                                 attn_span_loss=attn_span_loss,
                                 model=model)
         _plot_iter(logger=logger, span_latest=span_latest, plotter=plotter)
-        breakpoint()
         _save_iter(checkpoint_freq=checkpoint_freq,
                    checkpoint_path=checkpoint_path,
                    iter_no=iter_no,
