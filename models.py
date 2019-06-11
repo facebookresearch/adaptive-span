@@ -229,7 +229,7 @@ class TransformerSeq(nn.Module):
 
         self.layers = nn.ModuleList()
         self.layers.extend(
-            TransformerSeqLayer(hidden_size=model_params['model_params'],
+            TransformerSeqLayer(hidden_size=hidden_size,
                                 model_params=model_params,
                                 attn_span_params=attn_span_params)
             for _ in range(nb_layers))
