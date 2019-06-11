@@ -88,9 +88,9 @@ def _tokenize(text_path, dictionary_to_update):
     # Count nb of tokens in text and update the dictionary
     with open(text_path, 'r', encoding="utf8") as f:
         for line in f:
-            print(line)
             tokens = line.split() + ['<eos>']
             nb_tokens_in_text += len(tokens)
+            print(nb_tokens_in_text)
             for token in tokens:
                 if token not in dictionary_to_update:
                     dictionary_to_update[token] = nb_tokens_in_dictionary
@@ -108,6 +108,7 @@ def _tokenize(text_path, dictionary_to_update):
             for token in tokens:
                 ids[current_token_no] = dictionary_to_update[token]
                 current_token_no += 1
+                print(f'{current_token_no} / {nb_tokens_in_text} tokens')
     breakpoint()
 
     return ids
