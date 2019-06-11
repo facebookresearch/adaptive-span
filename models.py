@@ -46,19 +46,16 @@ class SeqAttention(nn.Module):
                  dropout,
                  hidden_size,
                  nb_heads,
-                 attn_span_lim,
                  attn_span_loss,
                  block_size,
-                 attn_span_len,
-                 attn_span_init,
-                 *args, **kwargs):
+                 model_params,
+                 attn_span_params):
         nn.Module.__init__(self)
         self.attn_span_enabled = attn_span_enabled
         self.attn_span_cache_enabled = attn_span_cache_enabled
         self.dropout = nn.Dropout(dropout)
         self.nb_heads = nb_heads
         self.head_dim = hidden_size // nb_heads
-        self.attn_span_lim = attn_span_lim
         self.attn_span_loss = attn_span_loss
         self.block_size = block_size
         self.adaptive_span = AdaptiveSpan(
@@ -67,11 +64,11 @@ class SeqAttention(nn.Module):
             dropout=dropout,
             nb_heads=nb_heads,
             hidden_size=hidden_size,
-            attn_span_lim=attn_span_lim,
+            attn_span_lim=attn_span_params['attn_span_lim'],
             attn_span_loss=attn_span_loss,
             block_size=block_size,
-            attn_span_len=attn_span_len,
-            attn_span_init=attn_span_init)
+            attn_span_len=attn_span_params['attn_span_len'],
+            attn_span_init=attn_span_params['attn_span_init'])
 
     def forward(self, query, key, value, key_pe):
         # query size = B x M x H
@@ -113,15 +110,21 @@ class MultiHeadSeqAttention(nn.Module):
                  nb_heads,
                  block_size,
                  model_params,
-                 attn_params,
-                 *args, **kwargs):
+                 attn_span_params):
         nn.Module.__init__(self)
         assert hidden_size % nb_heads == 0
         self.nb_heads = nb_heads
         self.head_dim = hidden_size // nb_heads
-        self.attn = SeqAttention(model_params=model_params,
-                                 attn_params=attn_params,
-                                 **{**model_params, **attn_params})
+        self.attn = SeqAttention(
+            attn_span_enabled=attn_span_params['attn_span_enabled'],
+            attn_span_cache_enabled=attn_span_params['attn_span_cache_enabled'],
+            dropout=model_params['dropout'],
+            hidden_size=hidden_size,
+            nb_heads=nb_heads,
+            attn_span_loss=attn_span_params['attn_span_loss'],
+            block_size=model_params['block_size'],
+            model_params=model_params,
+            attn_span_params=attn_span_params)
         self.proj_query = nn.Linear(
             hidden_size, self.head_dim * nb_heads, bias=False)
         self.proj_out = nn.Linear(
@@ -165,8 +168,7 @@ class FeedForwardLayer(nn.Module):
     def __init__(self,
                  hidden_size,
                  inner_hidden_size,
-                 dropout,
-                 *args, **kwargs):
+                 dropout):
         nn.Module.__init__(self)
         self.fc1 = nn.Linear(hidden_size, inner_hidden_size)
         self.fc2 = nn.Linear(inner_hidden_size, hidden_size)
@@ -183,15 +185,17 @@ class TransformerSeqLayer(nn.Module):
     def __init__(self,
                  hidden_size,
                  model_params,
-                 attn_params,
-                 *args, **kwargs):
+                 attn_span_params):
         nn.Module.__init__(self)
-        self.attn = MultiHeadSeqAttention(model_params=model_params,
-                                          attn_params=attn_params,
-                                          **{**model_params, **attn_params})
-        self.ff = FeedForwardLayer(model_params=model_params,
-                                   attn_params=attn_params,
-                                   **{**model_params, **attn_params})
+        self.attn = MultiHeadSeqAttention(hidden_size=hidden_size,
+                                          nb_heads=model_params['nb_heads'],
+                                          block_size=model_params['block_size'],
+                                          model_params=model_params,
+                                          attn_span_params=attn_span_params)
+        self.ff = FeedForwardLayer(
+            hidden_size=model_params['hidden_size'],
+            inner_hidden_size=model_params['inner_hidden_size'],
+            dropout=model_params['dropout'])
         self.norm1 = nn.LayerNorm(hidden_size)
         self.norm2 = nn.LayerNorm(hidden_size)
 
@@ -215,8 +219,7 @@ class TransformerSeq(nn.Module):
                  attn_span_lim,
                  block_size,
                  model_params,
-                 attn_params,
-                 *args, **kwargs):
+                 attn_span_params):
         nn.Module.__init__(self)
         # token embeddings
         self.in_emb = nn.Embedding(vocab_size, hidden_size)
@@ -226,9 +229,9 @@ class TransformerSeq(nn.Module):
 
         self.layers = nn.ModuleList()
         self.layers.extend(
-            TransformerSeqLayer(model_params=model_params,
-                                attn_params=attn_params,
-                                **{**model_params, **attn_params})
+            TransformerSeqLayer(hidden_size=model_params['model_params'],
+                                model_params=model_params,
+                                attn_span_params=attn_span_params)
             for _ in range(nb_layers))
 
         self.block_size = block_size
