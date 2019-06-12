@@ -63,6 +63,7 @@ def launch(env_params,
         env_params=env_params,
         device=device,
         vocab_size=vocab_size)
+    breakpoint()
 
     # OPTIMIZER AND SCHEDULER
     update_optim_params(

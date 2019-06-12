@@ -98,7 +98,6 @@ def _tokenize(text_path, dictionary_to_update):
                 if token not in dictionary_to_update:
                     dictionary_to_update[token] = nb_tokens_in_dictionary
                     nb_tokens_in_dictionary += 1
-    breakpoint()
 
     # Create tensor of size nb_tokens_in_text
     ids = torch.LongTensor(nb_tokens_in_text)
@@ -118,7 +117,6 @@ def _tokenize(text_path, dictionary_to_update):
                           f'{current_token_no} / {nb_tokens_in_text} tokens',
                           end='\r')
     print('')
-    breakpoint()
 
     return ids
 
