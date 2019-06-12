@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+#!/usr/bin/env python3
+
+import argparse
+=======
 from __future__ import print_function
 import time
 import copy
@@ -116,18 +121,92 @@ def main(args):
 
     device = torch.device("cuda" if use_cuda else "cpu")
     dtype = torch.float32
+>>>>>>> master
 
-    train_data, val_data, test_data, corpus = get_data(args, device)
+from config import PARAMS_CONFIG
+from workflow import (
+    set_up_env,
+    get_device,
+    get_train_val_test_data,
+    get_vocab_size,
+    get_model,
+    update_optim_params,
+    get_optimizer_and_scheduler,
+    train)
 
-    if args.distributed:
-        args.batch_sz = args.batch_sz // args.world_size
-        train_data = train_data[args.batch_sz*args.rank:args.batch_sz*(args.rank+1)]
-        val_data = val_data[args.batch_sz*args.rank:args.batch_sz*(args.rank+1)]
-        test_data = test_data[args.batch_sz*args.rank:args.batch_sz*(args.rank+1)]
 
-    logger = Logger(args)
+def _parse_args(params_config, args):
+    parser = argparse.ArgumentParser()
+    for params_category in params_config:  # e.g., 'model_params'
+        for param_flag, param_config in params_config[params_category].items():
+            # e.g., param_flag = '--block-sz'
+            parser.add_argument(param_flag, **param_config)
+    return parser.parse_args(args)
+
+
+def get_params(params_config, args=None):
+    namespace = _parse_args(params_config, args)
+    return {
+        params_category: {
+            param_config['dest']:
+                namespace.__getattribute__(param_config['dest'])
+            for param_config in params_config[params_category].values()
+        }
+        for params_category in params_config
+    }
+
+
+def launch(env_params,
+           model_params,
+           attn_span_params,
+           optim_params,
+           data_params,
+           plotter_params,
+           trainer_params,
+           *args,
+           **kwargs):
+    # ENVIRONMENT
+    set_up_env(env_params)
+    device = get_device(env_params)
+
+    # DATA
+    train_data, val_data, test_data = get_train_val_test_data(
+        data_params=data_params,
+        env_params=env_params,
+        optim_params=optim_params,
+        device=device)
+    vocab_size = get_vocab_size(data_params)
 
     # MODEL
+<<<<<<< HEAD
+    model = get_model(
+        model_params=model_params,
+        attn_span_params=attn_span_params,
+        env_params=env_params,
+        device=device,
+        vocab_size=vocab_size)
+
+    # OPTIMIZER AND SCHEDULER
+    update_optim_params(
+        optim_params=optim_params, env_params=env_params)
+    optimizer, scheduler = get_optimizer_and_scheduler(
+        model=model, optim_params=optim_params)
+
+    # train
+    train(trainer_params=trainer_params,
+          env_params=env_params,
+          model_params=model_params,
+          attn_span_params=attn_span_params,
+          optim_params=optim_params,
+          plotter_params=plotter_params,
+          device=device,
+          model=model,
+          optimizer=optimizer,
+          scheduler=scheduler,
+          train_data=train_data,
+          val_data=val_data,
+          test_data=test_data)
+=======
     model = TransformerSeq(args)
 
     if args.distributed:
@@ -202,9 +281,8 @@ def main(args):
 
         logger.step(args, stat_train, stat_val, elapsed)
         checkpoint.save(args, model, optimizer, logger, scheduler)
+>>>>>>> master
 
 
 if __name__ == '__main__':
-    parser = get_parser()
-    args = parser.parse_args()
-    main(args)
+    launch(**get_params(params_config=PARAMS_CONFIG, args=None))

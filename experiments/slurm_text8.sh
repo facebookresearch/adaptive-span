@@ -15,7 +15,7 @@ for l in 0.0000005; do
     name="13span_mem${lim}_loss${l}_cache_more"
     echo running $name
     ./submit_dist.sh $name priority "gpu:volta:8 -C volta32gb" \
-    --nepochs 120 --nbatches 10000 \
+    --niter 120 --nbatches 10000 \
     --data /private/home/sainbar/data/text8 \
     --hid-sz 512 --inner-hid-sz 2048 --block-sz 512 --batch-sz $bsz --nlayers 12 \
     --lr $lr --momentum $mom --dropout $do --optim adagrad --lr-warmup $wu \

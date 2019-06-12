@@ -13,12 +13,21 @@ A model can be trained
 python main.py --data /path/to/data --checkpoint /path/to/checkpoint
 ```
 Add `--plot` argument to plot training curves in Visdom.
+<<<<<<< HEAD
 
 A model with adaptive span can be trained with:
 ```
 python main.py --data /path/to/data --checkpoint /path/to/checkpoint --attn-span-loss 0.000002
 ```
 
+=======
+
+A model with adaptive span can be trained with:
+```
+python main.py --data /path/to/data --checkpoint /path/to/checkpoint --attn-span-loss 0.000002
+```
+
+>>>>>>> master
 ### Evaluation of a model
 After training, a model can be tested on the whole test data by adding `--full-test`:
 ```bash
