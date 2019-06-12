@@ -546,7 +546,7 @@ def _train(device,
             attn_span_lim=attn_span_lim,
             attn_span_loss=attn_span_loss,
             block_size=block_size,
-            test_only=True,
+            test_only=False,
             train_pos=pos[0],
             h_cache=hid[0])
         elapsed = 1000 * (time.time() - t_sta) / nb_batches
