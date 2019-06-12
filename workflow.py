@@ -7,7 +7,6 @@ import random
 
 import torch
 
-# TODO: review import statements
 from models import TransformerSeq
 from adagrad_with_grad_clip import AdagradWithGradClip
 from utils import (
@@ -292,7 +291,7 @@ def _log_iter(logger,
               attn_span_loss,
               model):
     X = (iter_no + 1) * nb_batches
-    # TODO: why log(2)
+
     train_bpc = stat_train['loss'] / math.log(2)
     val_bpc = stat_val['loss'] / math.log(2)
     print('{}\ttrain: {:.2f}bpc\tval: {:.2f}bpc\tms/batch: {:.1f}'.format(
@@ -307,8 +306,6 @@ def _log_iter(logger,
     for layer in model.module.layers:
         span = layer.attn.attn.adaptive_span.mask.size_ratio.view(-1)
         span_latest.append(span)
-        # TODO: why this line?
-        span = span.mean().item()
     span_latest = torch.cat(span_latest, dim=0)
     logger.log('span_avg', span_latest.mean().item())
     logger.log('span_max', span_latest.max().item())
@@ -512,7 +509,6 @@ def _train(device,
                 test_only=True,
                 train_pos=pos[1],
                 h_cache=hid[1])
-            # TODO: replace print by logger
             print('val: {:.3f}bpc'.format(stat_val['loss'] / math.log(2)))
 
             stat_test, pos[2], hid[2] = _train_single_iteration(
@@ -528,7 +524,6 @@ def _train(device,
                 test_only=True,
                 train_pos=pos[2],
                 h_cache=hid[2])
-            # TODO: replace print by logger
             print('test: {:.3f}bpc'.format(stat_test['loss'] / math.log(2)))
         return
 

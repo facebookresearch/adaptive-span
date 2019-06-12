@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# TODO: add licence or subclass adagrad from pytorch
-
 from torch.optim import Adagrad
 
 

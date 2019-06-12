@@ -88,7 +88,6 @@ class AdaptiveSpan(nn.Module):
             key = key[:, skip_len2:, :]
             value = value[:, skip_len2:, :]
         elif skip_len2 < 0:
-            # TODO: replace print by proper logger
             print('warning: cache is too short. cache_size={} skip_len={}'.
                   format(cache_size, skip_len))
             key = F.pad(key, [0, 0, -skip_len2, 0])
