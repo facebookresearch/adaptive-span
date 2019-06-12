@@ -69,6 +69,7 @@ def launch(env_params,
         optim_params=optim_params, env_params=env_params)
     optimizer, scheduler = get_optimizer_and_scheduler(
         model=model, optim_params=optim_params)
+    breakpoint()
 
     # train
     train(trainer_params=trainer_params,
