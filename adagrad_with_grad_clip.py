@@ -115,7 +115,7 @@ class AdagradWithGradClip(Optimizer):
 
         defaults = dict(lr=lr, lr_decay=lr_decay, weight_decay=weight_decay,
                         initial_accumulator_value=initial_accumulator_value, grad_clip=grad_clip)
-        super(Adagrad, self).__init__(params, defaults)
+        super(AdagradWithGradClip, self).__init__(params, defaults)
 
         for group in self.param_groups:
             for p in group['params']:
