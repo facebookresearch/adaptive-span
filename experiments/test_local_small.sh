@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+pkill visdom
 visdom &
 
 DATA_PATH='/private/home/xavierm/Data/text8'
