@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
+set -e
+
 pkill visdom
 visdom &
 
+ENTRYPOINT_PATH='/private/home/xavierm/Code/adaptive-span/main.py'
 DATA_PATH='/private/home/xavierm/Data/text8'
-../main.py --data $DATA_PATH \
+python3 $ENTRYPOINT_PATH --data $DATA_PATH \
 --hid-sz 256 --inner-hid-sz 1024 --block-sz 256 --batch-sz 64 --nlayers 8 \
 --lr 0.07 --momentum 0 --dropout 0 --optim adagrad --lr-warmup 8000 \
 --attn-span-lim 512 --nheads 4 --grad-clip 0.03 \
