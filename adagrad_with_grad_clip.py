@@ -89,7 +89,7 @@ import torch
 from torch.optim.optimizer import Optimizer
 
 
-class Adagrad(Optimizer):
+class AdagradWithGradClip(Optimizer):
     """Implements Adagrad algorithm.
     It has been proposed in `Adaptive Subgradient Methods for Online Learning
     and Stochastic Optimization`_.
