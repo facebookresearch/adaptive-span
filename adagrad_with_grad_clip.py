@@ -29,6 +29,7 @@ class AdagradWithGradClip(Adagrad):
                          weight_decay=weight_decay,
                          initial_accumulator_value=initial_accumulator_value)
         self.defaults['grad_clip'] = grad_clip
+        breakpoint()
 
     def step(self, closure=None):
         loss = None
