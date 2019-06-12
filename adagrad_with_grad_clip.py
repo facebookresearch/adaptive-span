@@ -30,7 +30,6 @@ class AdagradWithGradClip(Adagrad):
                          initial_accumulator_value=initial_accumulator_value)
         self.defaults['grad_clip'] = grad_clip
         self.param_groups[0].setdefault('grad_clip', grad_clip)
-        breakpoint()
 
     def step(self, closure=None):
         loss = None
