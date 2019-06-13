@@ -15,10 +15,10 @@ codedir=$base_dir/code/
 if [ -d "$codedir" ]; then
   read -r -p "The code already exists. Overwrite it? [y/N] " response
   if [[ "$response" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-    rsync -a /private/home/$USER/adaptive_span/ $codedir
+    rsync -a /private/home/$USER/adaptive-span/ $codedir
   fi
 else
-  rsync -a /private/home/$USER/adaptive_span/ $codedir
+  rsync -a /private/home/$USER/adaptive-span/ $codedir
 fi
 
 echo "$args" > $base_dir/args.txt

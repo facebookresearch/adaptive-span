@@ -9,9 +9,9 @@ import submitit
 
 # TODO: review import statements
 from submit_params_config import *
-from utils.params import get_params
+from main import get_params
 from main import launch
-from params_config import PARAMS_CONFIG
+from config import PARAMS_CONFIG
 
 
 class SubmitMyFunc:
@@ -19,13 +19,14 @@ class SubmitMyFunc:
         self.func = func
 
     def __call__(self, args):
-        self.call(args)
+        self.func(**args)
 
     def checkpoint(self, args):
         return submitit.helpers.DelayedSubmission(self, args)
 
 
 submit_params = get_params(params_config=SUBMIT_PARAMS_CONFIG, args=None)
+submit_params = submit_params['submit_params']
 folder = Path(submit_params['folder'])
 os.makedirs(str(folder), exist_ok=True)
 init_file = folder / f"{uuid.uuid4().hex}_init"  # not used when nodes=1

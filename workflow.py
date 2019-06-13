@@ -92,7 +92,6 @@ def _tokenize(text_path, dictionary_to_update):
         for line in f:
             tokens = line.split() + ['<eos>']
             nb_tokens_in_text += len(tokens)
-            print(nb_tokens_in_text)
             for token in tokens:
                 if token not in dictionary_to_update:
                     dictionary_to_update[token] = nb_tokens_in_dictionary
