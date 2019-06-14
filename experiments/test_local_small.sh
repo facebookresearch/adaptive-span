@@ -5,8 +5,8 @@ set -e
 # pkill visdom
 # visdom &
 
-ENTRYPOINT_PATH='/private/home/sainbar/adaptive-span/main.py'
-DATA_PATH='/private/home/sainbar/data/enwik8_copy'
+ENTRYPOINT_PATH="/private/home/$USER/adaptive-span/main.py"
+DATA_PATH="/private/home/$USER/data/enwik8_copy"
 python3 $ENTRYPOINT_PATH --data $DATA_PATH \
 --hid-sz 256 --inner-hid-sz 1024 --block-sz 256 --batch-sz 64 --nlayers 8 \
 --lr 0.07 --momentum 0 --dropout 0 --optim adagrad --lr-warmup 8000 \

@@ -183,7 +183,7 @@ def get_train_val_test_data(data_params, env_params, optim_params, device):
     data_params['vocab_size'] = corpus.vocab_size
     return _get_train_val_test_data(corpus=corpus,
                                     device=device,
-                                    batch_size=batch_size,
+                                    batch_size=optim_params['batch_size'],
                                     device_batch_size=optim_params['device_batch_size'],
                                     rank=env_params['rank'])
 
