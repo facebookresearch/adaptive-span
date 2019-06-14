@@ -153,7 +153,7 @@ PARAMS_CONFIG = {
             'type': int,
             'default': 1000,
             'help': 'number of batches in each iteration',
-            'dest': 'nb_batches'
+            'dest': 'nb_batches_per_iter'
         },
         '--niter': {
             'type': int,

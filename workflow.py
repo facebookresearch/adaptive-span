@@ -25,6 +25,7 @@ def _torch_distributed_init_process_group(distributed,
                                           submitit_enabled,
                                           dist_init,
                                           local_rank):
+    local_rank
     rank, world_size = 0, 1
     if distributed:
         if submitit_enabled:
@@ -74,6 +75,11 @@ def set_up_env(env_params):
 
 def get_device(env_params):
     return env_params['device']
+
+
+def update_optim_params(optim_params, env_params):
+    optim_params['device_batch_size'] = (optim_params['batch_size'] //
+                                         env_params['world_size'])
 
 
 ##############################################################################
@@ -159,11 +165,12 @@ def _build_corpus(data_path):
 
 def _get_train_val_test_data(corpus,
                              batch_size,
+                             device_batch_size,
                              device,
                              rank):
     slice_data = slice(
-        batch_size * rank,
-        batch_size * (rank + 1))
+        device_batch_size * rank,
+        device_batch_size * (rank + 1))
     return [
         _batchify(corpus.train, batch_size).to(device)[slice_data],
         _batchify(corpus.valid, batch_size).to(device)[slice_data],
@@ -176,7 +183,8 @@ def get_train_val_test_data(data_params, env_params, optim_params, device):
     data_params['vocab_size'] = corpus.vocab_size
     return _get_train_val_test_data(corpus=corpus,
                                     device=device,
-                                    batch_size=optim_params['batch_size'],
+                                    batch_size=batch_size,
+                                    device_batch_size=optim_params['device_batch_size'],
                                     rank=env_params['rank'])
 
 
@@ -262,10 +270,6 @@ def _get_scheduler(optimizer, lr_warmup):
     return None
 
 
-def update_optim_params(optim_params, env_params):
-    optim_params['batch_size'] //= env_params['world_size']
-
-
 def get_optimizer_and_scheduler(model, optim_params):
     optimizer = _get_optimizer(model=model,
                                optim=optim_params['optim'],
@@ -283,13 +287,13 @@ def get_optimizer_and_scheduler(model, optim_params):
 
 def _log_iter(logger,
               iter_no,
-              nb_batches,
+              nb_batches_per_iter,
               stat_train,
               stat_val,
               elapsed,
               attn_span_loss,
               model):
-    X = (iter_no + 1) * nb_batches
+    X = (iter_no + 1) * nb_batches_per_iter
 
     train_bpc = stat_train['loss'] / math.log(2)
     val_bpc = stat_val['loss'] / math.log(2)
@@ -386,7 +390,7 @@ def _train_single_iteration(model,
                             optimizer,
                             scheduler,
                             data,
-                            nb_batches,
+                            nb_batches_per_iter,
                             full_test,
                             attn_span_lim,
                             attn_span_loss,
@@ -401,19 +405,19 @@ def _train_single_iteration(model,
     else:
         model.train()
 
-    nb_batches_max = nb_batches
+    nb_batches_per_iter_max = nb_batches_per_iter
     if test_only:
         if full_test:
-            nb_batches_max = math.ceil(data.size(1) / block_size)
+            nb_batches_per_iter_max = math.ceil(data.size(1) / block_size)
         else:
             # test on fewer batches for speed-up
-            nb_batches_max = max(1, nb_batches // 10)
-            nb_batches_max = min(nb_batches_max,
-                                 math.ceil(data.size(1) / block_size))
+            nb_batches_per_iter_max = max(1, nb_batches_per_iter // 10)
+            nb_batches_per_iter_max = min(nb_batches_per_iter_max,
+                                          math.ceil(data.size(1) / block_size))
 
-    actual_nb_batches = 0
-    for _ in range(nb_batches_max):
-        actual_nb_batches += 1
+    actual_nb_batches_per_iter = 0
+    for _ in range(nb_batches_per_iter_max):
+        actual_nb_batches_per_iter += 1
         h_cache = _train_batch(
             model=model,
             optimizer=optimizer,
@@ -439,7 +443,7 @@ def _train_single_iteration(model,
                 h.fill_(0)
 
     for k, v in stat.items():
-        stat[k] = v / actual_nb_batches
+        stat[k] = v / actual_nb_batches_per_iter
     return stat, train_pos, h_cache
 
 
@@ -457,8 +461,8 @@ def _train(device,
            world_size,
            hidden_size,
            block_size,
-           batch_size,
-           nb_batches,
+           device_batch_size,
+           nb_batches_per_iter,
            nb_iter,
            attn_span_lim,
            attn_span_loss,
@@ -485,7 +489,7 @@ def _train(device,
     hid = [
         [
             torch.zeros(
-                batch_size,
+                device_batch_size,
                 layer.attn.attn.adaptive_span.get_cache_size(),
                 hidden_size).to(device, dtype=torch.float32)
             for layer in model.module.layers
@@ -500,7 +504,7 @@ def _train(device,
                 optimizer=optimizer,
                 scheduler=scheduler,
                 data=val_data,
-                nb_batches=nb_batches,
+                nb_batches_per_iter=nb_batches_per_iter,
                 full_test=full_test,
                 attn_span_lim=attn_span_lim,
                 attn_span_loss=attn_span_loss,
@@ -515,7 +519,7 @@ def _train(device,
                 optimizer=optimizer,
                 scheduler=scheduler,
                 data=test_data,
-                nb_batches=nb_batches,
+                nb_batches_per_iter=nb_batches_per_iter,
                 full_test=full_test,
                 attn_span_lim=attn_span_lim,
                 attn_span_loss=attn_span_loss,
@@ -535,7 +539,7 @@ def _train(device,
             optimizer=optimizer,
             scheduler=scheduler,
             data=train_data,
-            nb_batches=nb_batches,
+            nb_batches_per_iter=nb_batches_per_iter,
             full_test=full_test,
             attn_span_lim=attn_span_lim,
             attn_span_loss=attn_span_loss,
@@ -543,14 +547,14 @@ def _train(device,
             test_only=False,
             train_pos=pos[0],
             h_cache=hid[0])
-        elapsed = 1000 * (time.time() - t_sta) / nb_batches
+        elapsed = 1000 * (time.time() - t_sta) / nb_batches_per_iter
         with torch.no_grad():
             stat_val, pos[1], hid[1] = _train_single_iteration(
                 model=model,
                 optimizer=optimizer,
                 scheduler=scheduler,
                 data=val_data,
-                nb_batches=nb_batches,
+                nb_batches_per_iter=nb_batches_per_iter,
                 full_test=full_test,
                 attn_span_lim=attn_span_lim,
                 attn_span_loss=attn_span_loss,
@@ -573,7 +577,7 @@ def _train(device,
 
         span_latest = _log_iter(logger=logger,
                                 iter_no=iter_no,
-                                nb_batches=nb_batches,
+                                nb_batches_per_iter=nb_batches_per_iter,
                                 stat_train=stat_train,
                                 stat_val=stat_val,
                                 elapsed=elapsed,
@@ -616,8 +620,8 @@ def train(trainer_params,
            world_size=env_params['world_size'],
            hidden_size=model_params['hidden_size'],
            block_size=model_params['block_size'],
-           batch_size=optim_params['batch_size'],
-           nb_batches=optim_params['nb_batches'],
+           device_batch_size=optim_params['device_batch_size'],
+           nb_batches_per_iter=optim_params['nb_batches_per_iter'],
            nb_iter=optim_params['nb_iter'],
            attn_span_lim=attn_span_params['attn_span_lim'],
            attn_span_loss=attn_span_params['attn_span_loss'],

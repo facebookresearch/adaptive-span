@@ -6,6 +6,7 @@
 - [ ] all experiments from the paper
 - [ ] write readme
 - [ ] remove internal experiment files
+- [ ] create corpus file offline once and for all to avoid duplicate work in distributed mode
 
 ### Training of a model
 A model can be trained
