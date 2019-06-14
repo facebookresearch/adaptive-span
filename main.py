@@ -47,6 +47,8 @@ def launch(env_params,
     # ENVIRONMENT
     set_up_env(env_params)
     device = get_device(env_params)
+    update_optim_params(
+        optim_params=optim_params, env_params=env_params)
 
     # DATA
     train_data, val_data, test_data = get_train_val_test_data(
@@ -65,8 +67,6 @@ def launch(env_params,
         vocab_size=vocab_size)
 
     # OPTIMIZER AND SCHEDULER
-    update_optim_params(
-        optim_params=optim_params, env_params=env_params)
     optimizer, scheduler = get_optimizer_and_scheduler(
         model=model, optim_params=optim_params)
 
