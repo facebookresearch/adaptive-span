@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # Usage: ./submit.sh job_name partition ngpus constraint arg1 arg2 ...
 name=$1
 partition=$2
