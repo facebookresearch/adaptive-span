@@ -117,6 +117,7 @@ class Plotter:
     def plot(self, title, Y, X=None):
         if self.plot_enabled:
             print(f'X is of type {X.__class__.__name__} and {title} is of type {Y.__class__.__name__}', flush=True)
+            print(f'{title} = {Y}')
             self.vis.line(X=X, Y=Y, win=title, opts={'title': title})
 
     def save(self):
