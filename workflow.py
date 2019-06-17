@@ -25,7 +25,7 @@ def _torch_distributed_init_process_group(distributed,
                                           submitit_enabled,
                                           dist_init,
                                           local_rank):
-    local_rank
+    local_rank = 0
     rank, world_size = 0, 1
     if distributed:
         if submitit_enabled:
@@ -454,6 +454,7 @@ def _train(device,
            train_data,
            val_data,
            test_data,
+           rank,
            checkpoint_path,
            checkpoint_freq,
            full_test,
@@ -613,6 +614,7 @@ def train(trainer_params,
            train_data=train_data,
            val_data=val_data,
            test_data=test_data,
+           rank=env_params['rank'],
            checkpoint_path=trainer_params['checkpoint_path'],
            checkpoint_freq=trainer_params['checkpoint_freq'],
            full_test=trainer_params['full_test'],
