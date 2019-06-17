@@ -294,11 +294,8 @@ def _log_iter(logger,
               attn_span_loss,
               model):
     X = (iter_no + 1) * nb_batches_per_iter
-    print(f'stat_train = {stat_train}')
-    print(f'stat_train["loss"] = {stat_train["loss"]}, type {type(stat_train["loss"])}')
-
-    train_bpc = stat_train['loss'] / math.log(2)
-    val_bpc = stat_val['loss'] / math.log(2)
+    train_bpc = float(stat_train['loss'] / math.log(2))
+    val_bpc = float(stat_val['loss'] / math.log(2))
     print('{}\ttrain: {:.2f}bpc\tval: {:.2f}bpc\tms/batch: {:.1f}'.format(
         X, train_bpc, val_bpc, elapsed))
     logger.log(title='X', value=X)
@@ -312,8 +309,8 @@ def _log_iter(logger,
         span = layer.attn.attn.adaptive_span.mask.size_ratio.view(-1)
         span_latest.append(span)
     span_latest = torch.cat(span_latest, dim=0)
-    logger.log('span_avg', span_latest.mean().item())
-    logger.log('span_max', span_latest.max().item())
+    logger.log('span_avg', float(span_latest.mean().item()))
+    logger.log('span_max', float(span_latest.max().item()))
     return span_latest
 
 
