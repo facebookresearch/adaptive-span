@@ -294,6 +294,8 @@ def _log_iter(logger,
               attn_span_loss,
               model):
     X = (iter_no + 1) * nb_batches_per_iter
+    print(f'stat_train = {stat_train}')
+    print(f'stat_train["loss"] = {stat_train["loss"]}, type {type(stat_train["loss"])}')
 
     train_bpc = stat_train['loss'] / math.log(2)
     val_bpc = stat_val['loss'] / math.log(2)
@@ -317,10 +319,7 @@ def _log_iter(logger,
 
 def _plot_iter(plotter, span_latest, logger):
     for title in logger:
-        print(f'iter on all title: {title} is of class {type(logger.get_data(title))}', flush=True)
-    for title in logger:
         if title != 'X':
-            print(f'{title} is of class {type(logger.get_data(title))}', flush=True)
             plotter.plot(title=title,
                          X=logger.get_data('X'),
                          Y=logger.get_data(title))
