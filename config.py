@@ -30,9 +30,9 @@ PARAMS_CONFIG = {
             'help': 'distributed training',
             'dest': 'dist_init'
         },
-        # TODO: what is the goal of this?
+        # TODO: what is the goal of this?™€
         # can we set it if not distributed? if not submitit?
-        '--local-rank': {
+        '--local_rank': {
             'type': int,
             'default': 0,
             'help': 'used in distributed training',
