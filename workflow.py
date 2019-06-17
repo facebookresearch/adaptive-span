@@ -317,8 +317,10 @@ def _log_iter(logger,
 
 def _plot_iter(plotter, span_latest, logger):
     for title in logger:
+        print(f'iter on all title: {title} is of class {type(title)}', flush=True)
+    for title in logger:
         if title != 'X':
-            print(f'{title} is of class {type(title)}')
+            print(f'{title} is of class {type(title)}', flush=True)
             plotter.plot(title=title,
                          X=logger.get_data('X'),
                          Y=logger.get_data(title))
