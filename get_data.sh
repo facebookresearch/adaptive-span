@@ -1,3 +1,4 @@
+#!/bin/bash
 
 if [[ ! -d 'data/enwik8' ]]; then
   mkdir -p data/enwik8

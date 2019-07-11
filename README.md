@@ -27,6 +27,9 @@ We  obtained the following results in our experiments:
 | text8 | 39M | 1.05 | 1.11 |
 | text8_large | 209M | 1.01 | 1.07 |
 
+## Pre-trained models
+You can download pre-trained models by running the `get_pretrained.sh` script. Then the same scripts in `./experiments/` can be used to evaluate those models. Since the download script puts models in `./checkpoints/`, make sure there is no file with the same name. Note that these pre-trained models are obtained by rerunning the training scripts after the code cleanup, so there are small differences from the above results due to the randomness of the training.
+
 ## More about the code
 - **Multi GPUs and nodes:** By default, the code uses `nn.DataParallel` to utilize all available GPUs. For more efficiency, enable distributed training by `--distributed` argument, which can run on multiple nodes.
 - **Base model:** As a base model, the code implements a Transformer model with relative position embeddings and hidden state caching for processing a sequence of tokens.
