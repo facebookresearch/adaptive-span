@@ -28,6 +28,7 @@ from utils import (
 def launch(env_params,
            model_params,
            adapt_span_params,
+           pers_mem_params,
            optim_params,
            data_params,
            trainer_params):
@@ -42,6 +43,7 @@ def launch(env_params,
         print('data_params:\t', data_params)
         print('trainer_params:\t', trainer_params)
         print('adapt_span_params:\t', adapt_span_params)
+        print('pers_mem_params:\t', pers_mem_params)
 
     # DATA
     train_data, val_data, test_data = get_train_val_test_data(
@@ -53,7 +55,8 @@ def launch(env_params,
     # MODEL
     model = TransformerSeq(
         vocab_size=data_params['vocab_size'], **model_params,
-        adapt_span_params=adapt_span_params)
+        adapt_span_params=adapt_span_params,
+        pers_mem_params=pers_mem_params)
     if distributed:
         local_rank = env_params['local_rank']
         model = model.to(device)

@@ -190,4 +190,13 @@ PARAMS_CONFIG = {
             'dest': 'adapt_span_cache'
         },
     },
+    # persistent memory specific params
+    'pers_mem_params': {
+        '--pers-mem-size': {
+            'type': int,
+            'default': 0,
+            'help': 'the number of persistent memory vectors',
+            'dest': 'pers_mem_size'
+        },
+    },
 }

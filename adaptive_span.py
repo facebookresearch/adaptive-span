@@ -88,7 +88,7 @@ class AdaptiveSpan(nn.Module):
                                  init_val=adapt_span_init,
                                  shape=(nb_heads, 1, 1))
 
-    def forward(self, attn):
+    def forward(self, attn, normalize=True):
         """mask attention with the right span"""
         # batch and head dimensions are merged together, so separate them first
         B = attn.size(0) # batch size
@@ -96,7 +96,8 @@ class AdaptiveSpan(nn.Module):
         attn = attn.reshape(B // self._nb_heads, self._nb_heads, M, -1)
 
         attn = self._mask(attn)
-        attn = attn / (attn.sum(-1, keepdim=True) + 1e-8)  # normalize so sum is 1
+        if normalize:
+            attn = attn / (attn.sum(-1, keepdim=True) + 1e-8)  # normalize so sum is 1
 
         attn = attn.view(B, M, -1)
         return attn
