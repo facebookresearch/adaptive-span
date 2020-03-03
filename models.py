@@ -15,6 +15,7 @@ import torch.nn.functional as F
 
 from adaptive_span import AdaptiveSpan
 from persistent_memory import PersistentMemory
+from adaptive_io import build_adaptive_io
 
 # Size notations:
 # B = batch_size, H = hidden_size, M = block_size, L = attn_span
@@ -195,11 +196,20 @@ class TransformerSeqLayer(nn.Module):
 
 class TransformerSeq(nn.Module):
     def __init__(self, vocab_size, hidden_size, nb_heads, nb_layers,
-                 attn_span, **kargs):
+                 attn_span, emb_dropout, adapt_io_params, **kargs):
         nn.Module.__init__(self)
         # token embeddings
-        self.in_emb = nn.Embedding(vocab_size, hidden_size)
-        self.out_emb = nn.Linear(hidden_size, vocab_size)
+        self.adapt_io = adapt_io_params['adapt_io_enabled']
+        if self.adapt_io:
+            self.in_emb, self.out_emb = build_adaptive_io(
+                vocab_size, hidden_size, **adapt_io_params)
+        else:
+            self.in_emb = nn.Embedding(vocab_size, hidden_size)
+            self.out_emb = nn.Linear(hidden_size, vocab_size)
+        if emb_dropout > 0:
+            self.emb_dropout = nn.Dropout(emb_dropout)
+        else:
+            self.emb_dropout = None
         # position embeddings
         self.key_pe = nn.Parameter(
             torch.randn(1, hidden_size // nb_heads, attn_span))
@@ -211,10 +221,13 @@ class TransformerSeq(nn.Module):
                 attn_span=attn_span, **kargs)
             for _ in range(nb_layers))
 
-    def forward(self, x, h_cache):
+    def forward(self, x, h_cache, target=None):
         # x size = B x M
         block_size = x.size(1)
         h = self.in_emb(x)  # B x M x H
+        if self.emb_dropout is not None:
+            h = self.emb_dropout(h)
+
         h_cache_next = []
         for l, layer in enumerate(self.layers):
             cache_size = layer.attn.attn.get_cache_size()
@@ -227,6 +240,12 @@ class TransformerSeq(nn.Module):
             h_cache_next.append(h_cache_next_l)
             h = layer(h, h_cache[l], self.key_pe)  # B x M x H
 
-        out = F.log_softmax(self.out_emb(h), dim=-1)
+        if self.emb_dropout is not None:
+            h = self.emb_dropout(h)
+        if self.adapt_io:
+            # loss is computed here
+            out = self.out_emb(h, target)
+        else:
+            out = F.log_softmax(self.out_emb(h), dim=-1)
 
         return out, h_cache_next

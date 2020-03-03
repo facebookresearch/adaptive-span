@@ -81,6 +81,12 @@ PARAMS_CONFIG = {
             'help': 'dropout rate of ReLU and attention',
             'dest': 'dropout'
         },
+        '--emb-dropout': {
+            'type': float,
+            'default': 0.,
+            'help': 'the dropout rate applied on I/O embeddings',
+            'dest': 'emb_dropout'
+        },
     },
     # optimization-specific
     'optim_params': {
@@ -155,6 +161,33 @@ PARAMS_CONFIG = {
             'default': False,
             'help': 'do evaluation on the whole validation and the test data',
             'dest': 'full_eval_mode'
+        },
+    },
+    # adaptive I/O specific params
+    'adapt_io_params': {
+        '--adapt-io': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'enable adaptive input and output representations',
+            'dest': 'adapt_io_enabled'
+        },
+        '--adapt-io-tied': {
+            'action': 'store_true',
+            'default': False,
+            'help': 'tie the input parameters with the output parameters',
+            'dest': 'adapt_io_tied'
+        },
+        '--adapt-io-divval': {
+            'type': int,
+            'default': 4,
+            'help': 'dimension division value',
+            'dest': 'adapt_io_divval'
+        },
+        '--adapt-io-cutoffs': {
+            'type': int,
+            'default': [20000, 40000, 200000],
+            'help': 'cutoffs values',
+            'dest': 'adapt_io_cutoffs'
         },
     },
     # adaptive attention span specific params

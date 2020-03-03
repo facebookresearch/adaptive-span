@@ -11,21 +11,39 @@ import os
 import torch
 
 
-def _tokenize(text_path, dictionary_to_update):
+class Dictionary(object):
+    def __init__(self, path, sort_dict=False):
+        self.word2idx = {}
+        self.word2count = {}
+        self.idx2word = []
+
+        assert os.path.exists(path)
+        # Add words to the dictionary
+        with open(path, 'r', encoding="utf8") as f:
+            for line in f:
+                words = line.split() + ['<eos>']
+                for word in words:
+                    if sort_dict:
+                        self.word2count[word] = self.word2count.get(word, 0) + 1
+                    elif word not in self.word2idx:
+                        self.word2idx[word] = len(self.idx2word)
+                        self.idx2word.append(word)
+        if sort_dict:
+            # Sort dictionary by count and build indices accordingly:
+            sorted_dict = sorted(self.word2count.items(), key=lambda kv: kv[1])[::-1]
+            for i in range(len(sorted_dict)):
+                word = sorted_dict[i][0]
+                self.word2idx[word] = i
+                self.idx2word.append(word)
+
+    def __len__(self):
+        return len(self.idx2word)
+
+
+def _tokenize(text_path, dictionary):
     """Tokenizes a text file."""
     print('Tokenizing {}'.format(text_path))
     assert os.path.exists(text_path)
-
-    nb_tokens_in_dictionary = len(dictionary_to_update)
-
-    # Count nb of tokens in text and update the dictionary
-    with open(text_path, 'r', encoding="utf8") as f:
-        for line in f:
-            tokens = line.split() + ['<eos>']
-            for token in tokens:
-                if token not in dictionary_to_update:
-                    dictionary_to_update[token] = nb_tokens_in_dictionary
-                    nb_tokens_in_dictionary += 1
 
     # Assign to each token its identifier
     ids = []
@@ -33,24 +51,26 @@ def _tokenize(text_path, dictionary_to_update):
         for line in f:
             tokens = line.split() + ['<eos>']
             for token in tokens:
-                ids.append(dictionary_to_update[token])
+                ids.append(dictionary[token])
     ids = torch.LongTensor(ids)
 
     return ids
 
 
 class Corpus:
-    def __init__(self, data_path):
-        self._dictionary = {}
+    def __init__(self, data_path, sort_dict):
+        print('Building dictionary')
+        self._dictionary = Dictionary(os.path.join(data_path, 'train.txt'), sort_dict)
+
         self.train = _tokenize(
             text_path=os.path.join(data_path, 'train.txt'),
-            dictionary_to_update=self._dictionary)
+            dictionary=self._dictionary.word2idx)
         self.valid = _tokenize(
             text_path=os.path.join(data_path, 'valid.txt'),
-            dictionary_to_update=self._dictionary)
+            dictionary=self._dictionary.word2idx)
         self.test = _tokenize(
             text_path=os.path.join(data_path, 'test.txt'),
-            dictionary_to_update=self._dictionary)
+            dictionary=self._dictionary.word2idx)
 
     @property
     def vocab_size(self):
@@ -65,9 +85,12 @@ def _batchify(data_tensor, batch_size):
     return data_tensor
 
 
-def _build_corpus(data_path, env_params):
+def _build_corpus(data_path, env_params, sort_dict):
     # save the corpus to a file so that it's faster next time
-    corpus_path = os.path.join(data_path, 'corpus.pt')
+    if sort_dict:
+        corpus_path = os.path.join(data_path, 'corpus_sorted.pt')
+    else:
+        corpus_path = os.path.join(data_path, 'corpus.pt')
     if os.path.exists(corpus_path):
         print('Loading an existing corpus file from {}'.format(corpus_path))
         corpus = torch.load(corpus_path)
@@ -76,7 +99,7 @@ def _build_corpus(data_path, env_params):
         if env_params['distributed']:
             # only one process need to create a corpus file
             if env_params['rank'] == 0:
-                corpus = Corpus(data_path)
+                corpus = Corpus(data_path, sort_dict)
                 torch.save(corpus, corpus_path)
                 # sync with other processes
                 torch.distributed.broadcast(torch.zeros(1).cuda(), src=0)
@@ -86,7 +109,7 @@ def _build_corpus(data_path, env_params):
                 torch.distributed.broadcast(torch.zeros(1).cuda(), src=0)
                 corpus = torch.load(corpus_path)
         else:
-            corpus = Corpus(data_path)
+            corpus = Corpus(data_path, sort_dict)
             torch.save(corpus, corpus_path)
     return corpus
 
@@ -99,8 +122,8 @@ def _get_train_val_test_data(corpus, batch_size):
     ]
 
 
-def get_train_val_test_data(data_params, env_params, batch_size, device):
-    corpus = _build_corpus(**data_params, env_params=env_params)
+def get_train_val_test_data(data_params, env_params, batch_size, device, sort_dict):
+    corpus = _build_corpus(data_params['data_path'], env_params, sort_dict)
     data_params['vocab_size'] = corpus.vocab_size
     train_data, val_data, test_data = _get_train_val_test_data(
         corpus=corpus, batch_size=batch_size)
