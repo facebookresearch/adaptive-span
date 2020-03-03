@@ -69,6 +69,9 @@ def _train_batch(model, optimizer, scheduler, X, Y, h_cache,
     if not eval_only:
         if scheduler is not None:
             scheduler.step()
+        if optimizer.grad_clip > 0:
+            torch.nn.utils.clip_grad_norm_(
+                model.parameters(), optimizer.grad_clip)
         optimizer.step()
 
         # make sure span parameters are in a correct range
