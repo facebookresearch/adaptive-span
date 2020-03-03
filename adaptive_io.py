@@ -181,6 +181,18 @@ class ProjectedAdaptiveLogSoftmax(nn.Module):
         return nll.view(shape)
 
 
+def compute_dummy_loss(in_emb, out_emb):
+    # hack to fix adaptive ou/in with distributed code
+    dummy_loss =  0 * (
+        sum(x.weight[0, 0] for x in in_emb.emb_layers) +
+        sum(x[0, 0] for x in in_emb.emb_projs) +
+        sum(x[0, 0] for x in out_emb.out_projs) +
+        sum(x.weight[0, 0] for x in out_emb.out_layers) +
+        sum(x.bias[0] for x in out_emb.out_layers)
+    )
+    return dummy_loss
+
+
 def build_adaptive_io(vocab_size, hidden_size, adapt_io_cutoffs,
     adapt_io_divval, adapt_io_tied, **kargs):
     in_emb = AdaptiveEmbedding(

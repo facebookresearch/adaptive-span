@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 from adaptive_span import AdaptiveSpan
 from persistent_memory import PersistentMemory
-from adaptive_io import build_adaptive_io
+from adaptive_io import build_adaptive_io, compute_dummy_loss
 
 # Size notations:
 # B = batch_size, H = hidden_size, M = block_size, L = attn_span
@@ -245,7 +245,9 @@ class TransformerSeq(nn.Module):
         if self.adapt_io:
             # loss is computed here
             out = self.out_emb(h, target)
+            dummy_loss = compute_dummy_loss(self.in_emb, self.out_emb)
         else:
             out = F.log_softmax(self.out_emb(h), dim=-1)
+            dummy_loss = None
 
-        return out, h_cache_next
+        return out, h_cache_next, dummy_loss

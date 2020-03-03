@@ -17,11 +17,9 @@ import torch
 def _train_step(model, X, Y, h_cache, eval_only, loss_div=1):
     """Single training step."""
 
-    out, h_cache = model(X, h_cache, target=Y)
+    out, h_cache, dummy_loss = model(X, h_cache, target=Y)
     if model.module.adapt_io:
-        loss = out.mean()
-        # if args.distributed:
-        #     loss = loss + dummy_loss
+        loss = out.mean() + dummy_loss.sum()
     else:
         out = out.view(-1, out.size(-1))
         loss = torch.nn.functional.nll_loss(out, Y.view(-1))
