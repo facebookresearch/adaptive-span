@@ -17,7 +17,7 @@ This code can be used for running experiments in [Adaptive Attention Span for Tr
 ### Running experiments in the paper
 Scripts for running experiments in the paper are located in `./experiments/` directory. For example, a smaller 8-layer version of our model can be trained on a single GPU by running:
 ```bash
-bash experiments/enwiki8_small.sh
+bash experiments/enwik8_small.sh
 ```
 It should reach about 1.3bpc on dev after 150k steps.
 
