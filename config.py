@@ -35,6 +35,13 @@ PARAMS_CONFIG = {
                     '(must contain train.txt, valid.txt and test.txt)',
             'dest': 'data_path'
         },
+        '--data-unit': {
+            'type': str,
+            'default': 'bpc',
+            'choices': ['bpc', 'ppl'],
+            'help': 'loss unit to log',
+            'dest': 'data_unit'
+        },
     },
     # model-specific
     'model_params': {

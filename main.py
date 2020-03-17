@@ -75,7 +75,7 @@ def launch(env_params,
         model=model, optim_params=optim_params)
 
     # create logger
-    logger = Logger()
+    logger = Logger(data_params['data_unit'])
 
     # resume training from last checkpoint if exists
     iter_init = load_checkpoint(
@@ -102,8 +102,12 @@ def launch(env_params,
                 else:
                     return
 
-            print('val: {:.3f}bpc'.format(loss_val / math.log(2)))
-            print('test: {:.3f}bpc'.format(loss_test / math.log(2)))
+            if data_params['data_unit'] == 'bpc':
+                print('val: {:.3f}bpc'.format(loss_val / math.log(2)))
+                print('test: {:.3f}bpc'.format(loss_test / math.log(2)))
+            else:
+                print('val: {:.2f}ppl'.format(math.exp(loss_val)))
+                print('test: {:.2f}ppl'.format(math.exp(loss_test)))
         return
 
     # position of current batch
