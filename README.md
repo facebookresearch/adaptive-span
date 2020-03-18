@@ -44,10 +44,12 @@ You can download pre-trained models by running the `get_pretrained.sh` script. T
 ## All-attention Network
 The code also can be used for training All-attention Networks introduced in [Augmenting Self-attention with Persistent Memory](https://arxiv.org/abs/1907.01470). If `--pers-mem-size` argument is set to `N`, all FF sublayers will be removed from the model and `N` persistent memory vectors will be added to every self-attention sublayer. The following experiments can be found in `./experiments/` directory.
 
-| Experiment | #params | dev (bpb) | test (bpb) |
+| Experiment | #params | dev | test |
 | ---------- | ---:| ---:| ----:|
 | enwik8_pers_small.sh | 39M |  |  |
-| enwik8_pers.sh | 114M | 1.00 | 0.98 |
+| enwik8_pers.sh | 114M | 1.00 bpb | 0.98 bpb |
+| wiki103_pers.sh | 133M | 18.8 ppl *| 19.7 ppl *|
+(\*This number is slightly better than the paper because it includes end-of-line as a token.)
 
 ## License
 The code is licensed under CC-BY-NC license. See the LICENSE file for more details.
