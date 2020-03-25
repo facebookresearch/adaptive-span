@@ -28,12 +28,12 @@ For training larger models, multiple GPUs are recommended. In the script files, 
 
 We  obtained the following results in our experiments:
 
-| Experiment | #params | dev (bpc) | test (bpc,bpb) |
+| Experiment | #params | dev | test |
 | ---------- | ---:| ---:| ----:|
-| enwik8 | 38M | 1.04 | 1.02 |
-| enwik8_large | 209M | 1.00 | 0.98 |
-| text8 | 39M | 1.05 | 1.11 |
-| text8_large | 209M | 1.01 | 1.07 |
+| enwik8 | 38M | 1.04 bpb | 1.02 bpb |
+| enwik8_large | 209M | 1.00 bpb | 0.98 bpb |
+| text8 | 39M | 1.05 bpc | 1.11 bpc |
+| text8_large | 209M | 1.01 bpc | 1.07 bpc |
 
 A large model training takes about 1.2sec/batch near the end (initially it's faster because the attention spans are smaller) on 8 V100 GPUs. So, for example, the whole `enwik8_large` training of 170k steps should take less than 2.4 days.
 
@@ -49,6 +49,7 @@ The code also can be used for training All-attention Networks introduced in [Aug
 | enwik8_pers_small.sh | 39M | 1.03 bpb | 1.01 bpb |
 | enwik8_pers.sh | 114M | 1.00 bpb | 0.98 bpb |
 | wiki103_pers.sh | 133M | 18.8 ppl *| 19.7 ppl *|
+
 (\*This number is slightly better than the paper because it includes end-of-line as a token.)
 
 ## License
