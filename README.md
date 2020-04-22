@@ -1,5 +1,5 @@
 # Sequential Transformer
-This is a code for training Transformers on sequential tasks such as language modeling. Unlike the original Transformer architecture, it uses caching of previous representations and relative position embeddings to better adapt to sequential tasks. In addition, the code also implements the following projects as described below:
+This is a code for training Transformers on sequential tasks such as language modeling. Unlike the original Transformer architecture, it uses caching of previous representations and relative position embeddings to better adapt to sequential tasks. In addition, the code also implements the following projects as described below and in this blog [post](https://ai.facebook.com/blog/making-transformer-networks-simpler-and-more-efficient/):
 - [Adaptive Attention Span](#adaptive-attention-span)
 - [All-attention Network](#all-attention-network)
 
