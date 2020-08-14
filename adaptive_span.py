@@ -65,7 +65,7 @@ class AdaptiveMask(nn.Module):
 
 
 class AdaptiveSpan(nn.Module):
-    """Adaptive attention span for Transformerself.
+    """Adaptive attention span for Transformers.
     This module learns an attention span length from data for each
     self-attention head.
 
